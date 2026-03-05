@@ -50,6 +50,7 @@ export default function ExpensesPage() {
   const [selectedMonth, setSelectedMonth] = useState('all');
   const [selectedYear, setSelectedYear] = useState('all');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [exportExpense, setExportExpense] = useState<Expense | null>(null);
 
   const filteredExpenses = useMemo(() => {
     return mockExpenses.filter(e => {
