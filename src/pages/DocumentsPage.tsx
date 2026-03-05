@@ -117,12 +117,20 @@ export default function DocumentsPage() {
             {needsReview.length} documento(s) precisam de revisão manual
           </p>
         </div>
-        {unprocessedCount > 0 && (
-          <Button onClick={handleReprocessAll} disabled={processingAll} variant="outline" size="sm" className="gap-2">
-            {processingAll ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
-            Reprocessar todos ({unprocessedCount})
-          </Button>
-        )}
+        <div className="flex gap-2">
+          {docsWithoutExpense.length > 0 && (
+            <Button onClick={handleGenerateExpenses} disabled={generatingExpenses} size="sm" className="gap-2">
+              {generatingExpenses ? <Loader2 className="w-4 h-4 animate-spin" /> : <PlusCircle className="w-4 h-4" />}
+              Gerar Despesas ({docsWithoutExpense.length})
+            </Button>
+          )}
+          {unprocessedCount > 0 && (
+            <Button onClick={handleReprocessAll} disabled={processingAll} variant="outline" size="sm" className="gap-2">
+              {processingAll ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+              Reprocessar todos ({unprocessedCount})
+            </Button>
+          )}
+        </div>
       </div>
 
       {needsReview.length > 0 && (
