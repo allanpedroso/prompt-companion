@@ -3,13 +3,15 @@ import { useExpensesWithDocuments } from '@/hooks/useExpenses';
 import { categoryLabels } from '@/data/mockData';
 import StatusBadge from '@/components/StatusBadge';
 import DocumentTypeBadge from '@/components/DocumentTypeBadge';
-import { ChevronRight, FileText, Download, Filter, X, CalendarIcon } from 'lucide-react';
+import { ChevronRight, FileText, Download, Filter, X, CalendarIcon, Merge, Loader2 } from 'lucide-react';
 import { useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
 import { Skeleton } from '@/components/ui/skeleton';
+import { supabase } from '@/integrations/supabase/client';
+import { useQueryClient } from '@tanstack/react-query';
 
 const months = [
   { value: 'all', label: 'Todos os meses' },
