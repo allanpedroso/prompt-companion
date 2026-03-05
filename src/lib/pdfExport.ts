@@ -93,7 +93,7 @@ export async function exportMergedPDF(expense: Expense, docs: Document[]) {
 
   const bytes = await pdfDoc.save();
   const filename = buildMergeFilename(expense, sorted);
-  triggerDownload(new Blob([bytes.buffer as ArrayBuffer], { type: 'application/pdf' }), filename);
+  triggerDownload(bytes, filename);
 }
 
 export async function exportDocumentsAsZip(expense: Expense, docs: Document[]) {
