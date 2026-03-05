@@ -220,6 +220,15 @@ export default function ExpensesPage() {
                           </span>
                         </div>
                       </div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 shrink-0 mt-0.5"
+                        onClick={() => exportSingleDocumentPDF(doc, expense.documents)}
+                        title="Exportar documento"
+                      >
+                        <Download className="w-3.5 h-3.5" />
+                      </Button>
                     </div>
                   ))}
                 </div>
