@@ -186,10 +186,10 @@ export default function ExpensesPage() {
                 </div>
               </button>
 
-              {/* Individual export */}
+              {/* Export documents dialog trigger */}
               <div className="pr-4">
-                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => exportExpenseToCSV([expense])} title="Exportar individual">
-                  <Download className="w-4 h-4" />
+                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setExportExpense(expense)} title="Exportar documentos">
+                  <FileDown className="w-4 h-4" />
                 </Button>
               </div>
             </div>
