@@ -1,5 +1,6 @@
 import { NavLink, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Upload, FileSearch, Receipt, Search, FileText } from 'lucide-react';
+import { LayoutDashboard, Upload, FileSearch, Receipt, Search, FileText, LogOut } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
 
 const navItems = [
   { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
@@ -11,6 +12,10 @@ const navItems = [
 
 export default function AppSidebar() {
   const location = useLocation();
+  const { user, signOut } = useAuth();
+
+  const displayName = user?.user_metadata?.display_name || user?.email?.split('@')[0] || 'Usuário';
+  const email = user?.email || '';
 
   return (
     <aside className="fixed left-0 top-0 bottom-0 w-64 bg-sidebar flex flex-col z-50"
@@ -51,12 +56,19 @@ export default function AppSidebar() {
       <div className="px-4 py-4 border-t border-sidebar-border">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-full bg-sidebar-accent flex items-center justify-center text-xs font-semibold text-sidebar-accent-foreground">
-            U
+            {displayName.charAt(0).toUpperCase()}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-sidebar-accent-foreground truncate">Usuário</p>
-            <p className="text-[11px] text-sidebar-foreground truncate">usuario@email.com</p>
+            <p className="text-sm font-medium text-sidebar-accent-foreground truncate">{displayName}</p>
+            <p className="text-[11px] text-sidebar-foreground truncate">{email}</p>
           </div>
+          <button
+            onClick={signOut}
+            className="p-1.5 rounded-md text-sidebar-foreground hover:text-sidebar-accent-foreground hover:bg-sidebar-accent/50 transition-colors"
+            title="Sair"
+          >
+            <LogOut className="w-4 h-4" />
+          </button>
         </div>
       </div>
     </aside>
