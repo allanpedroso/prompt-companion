@@ -2,16 +2,61 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useDocuments, useReprocessDocument } from '@/hooks/useDocuments';
 import DocumentTypeBadge from '@/components/DocumentTypeBadge';
-import { AlertTriangle, CheckCircle, RefreshCw, Loader2 } from 'lucide-react';
+import { AlertTriangle, CheckCircle, RefreshCw, Loader2, PlusCircle } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
+import { useQueryClient } from '@tanstack/react-query';
 
 export default function DocumentsPage() {
   const { data: documents = [], isLoading } = useDocuments();
   const reprocess = useReprocessDocument();
+  const qc = useQueryClient();
   const [processingIds, setProcessingIds] = useState<Set<string>>(new Set());
   const [processingAll, setProcessingAll] = useState(false);
+  const [generatingExpenses, setGeneratingExpenses] = useState(false);
+
+  const docsWithoutExpense = documents.filter(d => !d.expense_id && (d.confidence ?? 0) >= 70 && (d.extracted as any)?.estabelecimento && (d.extracted as any)?.valor);
+
+  const handleGenerateExpenses = async () => {
+    if (docsWithoutExpense.length === 0) {
+      toast.info('Todos os documentos já possuem despesas vinculadas.');
+      return;
+    }
+    setGeneratingExpenses(true);
+    let ok = 0, fail = 0;
+    for (const doc of docsWithoutExpense) {
+      const ext = doc.extracted as any;
+      let emissaoMesAno: string | null = null;
+      const dateStr = ext.data_vencimento || ext.data_pagamento;
+      if (dateStr) {
+        const parts = dateStr.split('/');
+        if (parts.length === 3) emissaoMesAno = `${parts[1]}-${parts[2]}`;
+      }
+      const { data: expData, error: expErr } = await supabase.from('expenses').insert({
+        user_id: doc.user_id,
+        estabelecimento: ext.estabelecimento,
+        cnpj_cpf: ext.cnpj || null,
+        category: doc.type === 'boleto' ? 'boleto' : (doc.type === 'nf' || doc.type === 'danfe') ? 'nota_fiscal' : 'outros',
+        status: ext.data_pagamento ? 'quitada' : 'pendente',
+        nf_numero: ext.nf_numero || null,
+        valor_total: ext.valor,
+        emissao_mes_ano: emissaoMesAno,
+      }).select('id').single();
+      if (!expErr && expData) {
+        await supabase.from('documents').update({ expense_id: expData.id }).eq('id', doc.id);
+        ok++;
+      } else {
+        fail++;
+      }
+    }
+    setGeneratingExpenses(false);
+    qc.invalidateQueries({ queryKey: ['documents'] });
+    qc.invalidateQueries({ queryKey: ['expenses'] });
+    qc.invalidateQueries({ queryKey: ['expenses-with-docs'] });
+    toast.success(`${ok} despesa(s) criada(s)${fail > 0 ? `, ${fail} falha(s)` : ''}`);
+  };
 
   const needsReview = documents.filter(d => (d.confidence ?? 0) < 70);
   const reviewed = documents.filter(d => (d.confidence ?? 0) >= 70);
@@ -72,12 +117,20 @@ export default function DocumentsPage() {
             {needsReview.length} documento(s) precisam de revisão manual
           </p>
         </div>
-        {unprocessedCount > 0 && (
-          <Button onClick={handleReprocessAll} disabled={processingAll} variant="outline" size="sm" className="gap-2">
-            {processingAll ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
-            Reprocessar todos ({unprocessedCount})
-          </Button>
-        )}
+        <div className="flex gap-2">
+          {docsWithoutExpense.length > 0 && (
+            <Button onClick={handleGenerateExpenses} disabled={generatingExpenses} size="sm" className="gap-2">
+              {generatingExpenses ? <Loader2 className="w-4 h-4 animate-spin" /> : <PlusCircle className="w-4 h-4" />}
+              Gerar Despesas ({docsWithoutExpense.length})
+            </Button>
+          )}
+          {unprocessedCount > 0 && (
+            <Button onClick={handleReprocessAll} disabled={processingAll} variant="outline" size="sm" className="gap-2">
+              {processingAll ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+              Reprocessar todos ({unprocessedCount})
+            </Button>
+          )}
+        </div>
       </div>
 
       {needsReview.length > 0 && (
