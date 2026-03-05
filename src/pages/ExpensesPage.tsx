@@ -2,12 +2,14 @@ import { motion } from 'framer-motion';
 import { mockExpenses, categoryLabels, type Expense } from '@/data/mockData';
 import StatusBadge from '@/components/StatusBadge';
 import DocumentTypeBadge from '@/components/DocumentTypeBadge';
-import { ChevronRight, FileText, Download, Filter, X, CalendarIcon } from 'lucide-react';
+import ExportDocumentsDialog from '@/components/ExportDocumentsDialog';
+import { ChevronRight, FileText, Download, Filter, X, CalendarIcon, FileDown } from 'lucide-react';
 import { useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
+import { exportSingleDocumentPDF } from '@/lib/pdfExport';
 
 const months = [
   { value: 'all', label: 'Todos os meses' },
@@ -48,6 +50,7 @@ export default function ExpensesPage() {
   const [selectedMonth, setSelectedMonth] = useState('all');
   const [selectedYear, setSelectedYear] = useState('all');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [exportExpense, setExportExpense] = useState<Expense | null>(null);
 
   const filteredExpenses = useMemo(() => {
     return mockExpenses.filter(e => {
@@ -183,10 +186,10 @@ export default function ExpensesPage() {
                 </div>
               </button>
 
-              {/* Individual export */}
+              {/* Export documents dialog trigger */}
               <div className="pr-4">
-                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => exportExpenseToCSV([expense])} title="Exportar individual">
-                  <Download className="w-4 h-4" />
+                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setExportExpense(expense)} title="Exportar documentos">
+                  <FileDown className="w-4 h-4" />
                 </Button>
               </div>
             </div>
@@ -217,6 +220,15 @@ export default function ExpensesPage() {
                           </span>
                         </div>
                       </div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 shrink-0 mt-0.5"
+                        onClick={() => exportSingleDocumentPDF(doc, expense.documents)}
+                        title="Exportar documento"
+                      >
+                        <Download className="w-3.5 h-3.5" />
+                      </Button>
                     </div>
                   ))}
                 </div>
@@ -225,6 +237,14 @@ export default function ExpensesPage() {
           </motion.div>
         ))}
       </div>
+
+      {exportExpense && (
+        <ExportDocumentsDialog
+          expense={exportExpense}
+          open={!!exportExpense}
+          onOpenChange={(open) => { if (!open) setExportExpense(null); }}
+        />
+      )}
     </div>
   );
 }
