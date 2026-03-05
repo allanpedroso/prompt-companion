@@ -123,5 +123,5 @@ export async function exportDocumentsAsZip(expense: Expense, docs: Document[]) {
   const blob = await zip.generateAsync({ type: 'blob' });
   const zipName = `${expense.estabelecimento}_${expense.emissao_mes_ano}_docs.zip`
     .replace(/[<>:"/\\|?*]/g, '');
-  triggerDownload(blob, zipName);
+  triggerDownloadBlob(blob, zipName);
 }
