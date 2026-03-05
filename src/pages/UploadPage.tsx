@@ -1,7 +1,8 @@
 import { useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FileText, CheckCircle, X, CloudUpload, AlertCircle } from 'lucide-react';
+import { FileText, CheckCircle, X, CloudUpload, AlertCircle, Sparkles } from 'lucide-react';
 import { useUploadDocument } from '@/hooks/useDocuments';
+import { toast } from 'sonner';
 
 interface UploadedFile {
   id: string;
@@ -26,20 +27,17 @@ export default function UploadPage() {
     setFiles(prev => [...prev, ...newFiles]);
 
     newFiles.forEach(f => {
-      // Simulate progress then do real upload
       let progress = 0;
       const interval = setInterval(() => {
         progress += Math.random() * 40;
-        if (progress >= 80) {
-          progress = 80;
-          clearInterval(interval);
-        }
+        if (progress >= 80) { progress = 80; clearInterval(interval); }
         setFiles(prev => prev.map(p => p.id === f.id && p.status === 'uploading' ? { ...p, progress } : p));
       }, 300);
 
       uploadMutation.mutateAsync(f.file).then(() => {
         clearInterval(interval);
         setFiles(prev => prev.map(p => p.id === f.id ? { ...p, progress: 100, status: 'done' } : p));
+        toast.success(`${f.file.name} enviado! Processamento com IA iniciado.`, { icon: '✨' });
       }).catch((err) => {
         clearInterval(interval);
         setFiles(prev => prev.map(p => p.id === f.id ? { ...p, status: 'error', errorMsg: err.message } : p));
@@ -60,6 +58,13 @@ export default function UploadPage() {
       <div>
         <h1 className="text-2xl font-bold text-foreground">Upload de Documentos</h1>
         <p className="text-sm text-muted-foreground mt-1">Envie boletos, comprovantes, NFs, DANFEs ou recibos</p>
+      </div>
+
+      <div className="glass-card p-4 flex items-center gap-3 text-sm">
+        <Sparkles className="w-5 h-5 text-primary shrink-0" />
+        <p className="text-muted-foreground">
+          <span className="font-medium text-foreground">Processamento com IA:</span> Após o upload, cada documento é automaticamente classificado e seus dados são extraídos (valor, estabelecimento, CNPJ, vencimento).
+        </p>
       </div>
 
       <motion.div
@@ -94,7 +99,7 @@ export default function UploadPage() {
                   <p className="text-sm font-medium text-foreground truncate">{f.file.name}</p>
                   <p className="text-xs text-muted-foreground">
                     {(f.file.size / 1024).toFixed(0)} KB
-                    {f.status === 'done' && ' · Enviado'}
+                    {f.status === 'done' && ' · Enviado · IA processando...'}
                     {f.status === 'error' && ` · ${f.errorMsg || 'Erro'}`}
                   </p>
                   {f.status === 'uploading' && (
