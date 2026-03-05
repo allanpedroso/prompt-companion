@@ -216,6 +216,42 @@ serve(async (req) => {
       });
     }
 
+    // Auto-create expense from extracted data
+    if (extracted.estabelecimento && extracted.valor) {
+      let emissaoMesAno: string | null = null;
+      const dateStr = extracted.data_vencimento || extracted.data_pagamento;
+      if (dateStr) {
+        const parts = dateStr.split("/");
+        if (parts.length === 3) {
+          emissaoMesAno = `${parts[1]}-${parts[2]}`; // MM-YYYY
+        }
+      }
+
+      const { data: expenseData, error: expError } = await supabase
+        .from("expenses")
+        .insert({
+          user_id: doc.user_id,
+          estabelecimento: extracted.estabelecimento,
+          cnpj_cpf: extracted.cnpj || null,
+          category: extracted.type === "boleto" ? "boleto" : extracted.type === "nf" || extracted.type === "danfe" ? "nota_fiscal" : "outros",
+          status: extracted.data_pagamento ? "quitada" : "pendente",
+          nf_numero: extracted.nf_numero || null,
+          valor_total: extracted.valor,
+          emissao_mes_ano: emissaoMesAno,
+        })
+        .select("id")
+        .single();
+
+      if (!expError && expenseData) {
+        await supabase
+          .from("documents")
+          .update({ expense_id: expenseData.id })
+          .eq("id", document_id);
+      } else {
+        console.error("Expense creation error:", expError);
+      }
+    }
+
     return new Response(JSON.stringify({ success: true, extracted }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
