@@ -36,10 +36,64 @@ function exportExpenseToCSV(expenses: any[]) {
 
 export default function ExpensesPage() {
   const { data: expenses = [], isLoading } = useExpensesWithDocuments();
+  const qc = useQueryClient();
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [selectedMonth, setSelectedMonth] = useState('all');
   const [selectedYear, setSelectedYear] = useState('all');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [consolidating, setConsolidating] = useState(false);
+
+  const duplicateCount = useMemo(() => {
+    const groups = new Map<string, number>();
+    expenses.forEach(e => {
+      const key = `${e.estabelecimento}||${e.emissao_mes_ano || ''}`;
+      groups.set(key, (groups.get(key) || 0) + 1);
+    });
+    return Array.from(groups.values()).filter(c => c > 1).reduce((sum, c) => sum + c - 1, 0);
+  }, [expenses]);
+
+  const handleConsolidate = async () => {
+    setConsolidating(true);
+    try {
+      const groups = new Map<string, typeof expenses>();
+      expenses.forEach(e => {
+        const key = `${e.estabelecimento}||${e.emissao_mes_ano || ''}`;
+        if (!groups.has(key)) groups.set(key, []);
+        groups.get(key)!.push(e);
+      });
+
+      let merged = 0;
+      for (const [, group] of groups) {
+        if (group.length <= 1) continue;
+        const sorted = [...group].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+        const primary = sorted[0];
+        const duplicates = sorted.slice(1);
+
+        const totalValor = sorted.reduce((sum, e) => sum + Number(e.valor_total), 0);
+
+        await supabase.from('expenses').update({ valor_total: totalValor }).eq('id', primary.id);
+
+        for (const dup of duplicates) {
+          if (dup.documents?.length) {
+            for (const doc of dup.documents) {
+              await supabase.from('documents').update({ expense_id: primary.id }).eq('id', doc.id);
+            }
+          }
+          await supabase.from('expenses').delete().eq('id', dup.id);
+          merged++;
+        }
+      }
+
+      qc.invalidateQueries({ queryKey: ['expenses'] });
+      qc.invalidateQueries({ queryKey: ['expenses-with-docs'] });
+      qc.invalidateQueries({ queryKey: ['documents'] });
+      toast.success(`${merged} despesa(s) duplicada(s) consolidada(s)`);
+    } catch (e: any) {
+      toast.error(`Erro ao consolidar: ${e.message}`);
+    } finally {
+      setConsolidating(false);
+    }
+  };
 
   const years = useMemo(() => Array.from(new Set(expenses.map(e => e.emissao_mes_ano?.split('-')[1]).filter(Boolean))).sort().reverse(), [expenses]);
 
