@@ -43,7 +43,7 @@ async function generateDocumentPage(
   const margin = 50;
   let y = height - margin;
 
-  const title = typeLabels[doc.type]?.toUpperCase() || 'DOCUMENTO';
+  const title = stripAccents(typeLabels[doc.type]?.toUpperCase() || 'DOCUMENTO');
   page.drawText(title, { x: margin, y, size: 18, font: boldFont, color: rgb(0.1, 0.4, 0.3) });
   y -= 35;
 
