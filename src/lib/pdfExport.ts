@@ -63,8 +63,8 @@ async function generateDocumentPage(
   lines.push(['Arquivo Original:', doc.original_filename]);
 
   for (const [label, value] of lines) {
-    page.drawText(label, { x: margin, y, size: 10, font: boldFont, color: rgb(0.3, 0.3, 0.3) });
-    page.drawText(value, { x: margin + 130, y, size: 10, font, color: rgb(0.1, 0.1, 0.1) });
+    page.drawText(stripAccents(label), { x: margin, y, size: 10, font: boldFont, color: rgb(0.3, 0.3, 0.3) });
+    page.drawText(stripAccents(value), { x: margin + 130, y, size: 10, font, color: rgb(0.1, 0.1, 0.1) });
     y -= 20;
   }
 
