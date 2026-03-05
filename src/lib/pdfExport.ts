@@ -28,6 +28,10 @@ function triggerDownloadBlob(blob: Blob, filename: string) {
   URL.revokeObjectURL(url);
 }
 
+function stripAccents(str: string): string {
+  return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^\x00-\x7F]/g, '');
+}
+
 async function generateDocumentPage(
   doc: Document,
   pdfDoc: PDFDocument,
