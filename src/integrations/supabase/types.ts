@@ -14,7 +14,113 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      documents: {
+        Row: {
+          confidence: number | null
+          created_at: string | null
+          expense_id: string | null
+          extracted: Json | null
+          file_path: string | null
+          id: string
+          original_filename: string
+          stored_filename: string | null
+          type: string
+          user_id: string
+        }
+        Insert: {
+          confidence?: number | null
+          created_at?: string | null
+          expense_id?: string | null
+          extracted?: Json | null
+          file_path?: string | null
+          id?: string
+          original_filename: string
+          stored_filename?: string | null
+          type?: string
+          user_id: string
+        }
+        Update: {
+          confidence?: number | null
+          created_at?: string | null
+          expense_id?: string | null
+          extracted?: Json | null
+          file_path?: string | null
+          id?: string
+          original_filename?: string
+          stored_filename?: string | null
+          type?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "documents_expense_id_fkey"
+            columns: ["expense_id"]
+            isOneToOne: false
+            referencedRelation: "expenses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      expenses: {
+        Row: {
+          category: string
+          cnpj_cpf: string | null
+          created_at: string | null
+          emissao_mes_ano: string | null
+          estabelecimento: string
+          id: string
+          nf_numero: string | null
+          status: string
+          user_id: string
+          valor_total: number
+        }
+        Insert: {
+          category?: string
+          cnpj_cpf?: string | null
+          created_at?: string | null
+          emissao_mes_ano?: string | null
+          estabelecimento: string
+          id?: string
+          nf_numero?: string | null
+          status?: string
+          user_id: string
+          valor_total?: number
+        }
+        Update: {
+          category?: string
+          cnpj_cpf?: string | null
+          created_at?: string | null
+          emissao_mes_ano?: string | null
+          estabelecimento?: string
+          id?: string
+          nf_numero?: string | null
+          status?: string
+          user_id?: string
+          valor_total?: number
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          created_at: string | null
+          display_name: string | null
+          email: string | null
+          id: string
+        }
+        Insert: {
+          created_at?: string | null
+          display_name?: string | null
+          email?: string | null
+          id: string
+        }
+        Update: {
+          created_at?: string | null
+          display_name?: string | null
+          email?: string | null
+          id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
