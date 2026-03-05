@@ -3,13 +3,15 @@ import { useExpensesWithDocuments } from '@/hooks/useExpenses';
 import { categoryLabels } from '@/data/mockData';
 import StatusBadge from '@/components/StatusBadge';
 import DocumentTypeBadge from '@/components/DocumentTypeBadge';
-import { ChevronRight, FileText, Download, Filter, X, CalendarIcon } from 'lucide-react';
+import { ChevronRight, FileText, Download, Filter, X, CalendarIcon, Merge, Loader2 } from 'lucide-react';
 import { useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
 import { Skeleton } from '@/components/ui/skeleton';
+import { supabase } from '@/integrations/supabase/client';
+import { useQueryClient } from '@tanstack/react-query';
 
 const months = [
   { value: 'all', label: 'Todos os meses' },
@@ -34,10 +36,64 @@ function exportExpenseToCSV(expenses: any[]) {
 
 export default function ExpensesPage() {
   const { data: expenses = [], isLoading } = useExpensesWithDocuments();
+  const qc = useQueryClient();
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [selectedMonth, setSelectedMonth] = useState('all');
   const [selectedYear, setSelectedYear] = useState('all');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [consolidating, setConsolidating] = useState(false);
+
+  const duplicateCount = useMemo(() => {
+    const groups = new Map<string, number>();
+    expenses.forEach(e => {
+      const key = `${e.estabelecimento}||${e.emissao_mes_ano || ''}`;
+      groups.set(key, (groups.get(key) || 0) + 1);
+    });
+    return Array.from(groups.values()).filter(c => c > 1).reduce((sum, c) => sum + c - 1, 0);
+  }, [expenses]);
+
+  const handleConsolidate = async () => {
+    setConsolidating(true);
+    try {
+      const groups = new Map<string, typeof expenses>();
+      expenses.forEach(e => {
+        const key = `${e.estabelecimento}||${e.emissao_mes_ano || ''}`;
+        if (!groups.has(key)) groups.set(key, []);
+        groups.get(key)!.push(e);
+      });
+
+      let merged = 0;
+      for (const [, group] of groups) {
+        if (group.length <= 1) continue;
+        const sorted = [...group].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+        const primary = sorted[0];
+        const duplicates = sorted.slice(1);
+
+        const totalValor = sorted.reduce((sum, e) => sum + Number(e.valor_total), 0);
+
+        await supabase.from('expenses').update({ valor_total: totalValor }).eq('id', primary.id);
+
+        for (const dup of duplicates) {
+          if (dup.documents?.length) {
+            for (const doc of dup.documents) {
+              await supabase.from('documents').update({ expense_id: primary.id }).eq('id', doc.id);
+            }
+          }
+          await supabase.from('expenses').delete().eq('id', dup.id);
+          merged++;
+        }
+      }
+
+      qc.invalidateQueries({ queryKey: ['expenses'] });
+      qc.invalidateQueries({ queryKey: ['expenses-with-docs'] });
+      qc.invalidateQueries({ queryKey: ['documents'] });
+      toast.success(`${merged} despesa(s) duplicada(s) consolidada(s)`);
+    } catch (e: any) {
+      toast.error(`Erro ao consolidar: ${e.message}`);
+    } finally {
+      setConsolidating(false);
+    }
+  };
 
   const years = useMemo(() => Array.from(new Set(expenses.map(e => e.emissao_mes_ano?.split('-')[1]).filter(Boolean))).sort().reverse(), [expenses]);
 
@@ -98,6 +154,12 @@ export default function ExpensesPage() {
         </Select>
         {hasFilters && <Button variant="ghost" size="sm" className="h-9 text-xs" onClick={() => { setSelectedMonth('all'); setSelectedYear('all'); }}><X className="w-3.5 h-3.5 mr-1" /> Limpar</Button>}
         <div className="ml-auto flex items-center gap-2">
+          {duplicateCount > 0 && (
+            <Button variant="outline" size="sm" className="h-9 text-xs" onClick={handleConsolidate} disabled={consolidating}>
+              {consolidating ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <Merge className="w-3.5 h-3.5 mr-1" />}
+              Consolidar duplicatas ({duplicateCount})
+            </Button>
+          )}
           <Button variant="outline" size="sm" className="h-9 text-xs" onClick={toggleAll}>
             {selectedIds.size === filteredExpenses.length && filteredExpenses.length > 0 ? 'Desmarcar todos' : 'Selecionar todos'}
           </Button>

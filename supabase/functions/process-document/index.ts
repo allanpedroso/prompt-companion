@@ -216,7 +216,7 @@ serve(async (req) => {
       });
     }
 
-    // Auto-create expense from extracted data
+    // Auto-create or reuse expense from extracted data
     if (extracted.estabelecimento && extracted.valor) {
       let emissaoMesAno: string | null = null;
       const dateStr = extracted.data_vencimento || extracted.data_pagamento;
@@ -227,28 +227,57 @@ serve(async (req) => {
         }
       }
 
-      const { data: expenseData, error: expError } = await supabase
+      // Check for existing expense with same user + estabelecimento + period
+      let expenseId: string | null = null;
+      const matchQuery = supabase
         .from("expenses")
-        .insert({
-          user_id: doc.user_id,
-          estabelecimento: extracted.estabelecimento,
-          cnpj_cpf: extracted.cnpj || null,
-          category: extracted.type === "boleto" ? "boleto" : extracted.type === "nf" || extracted.type === "danfe" ? "nota_fiscal" : "outros",
-          status: extracted.data_pagamento ? "quitada" : "pendente",
-          nf_numero: extracted.nf_numero || null,
-          valor_total: extracted.valor,
-          emissao_mes_ano: emissaoMesAno,
-        })
-        .select("id")
-        .single();
+        .select("id, valor_total")
+        .eq("user_id", doc.user_id)
+        .eq("estabelecimento", extracted.estabelecimento);
 
-      if (!expError && expenseData) {
+      if (emissaoMesAno) {
+        matchQuery.eq("emissao_mes_ano", emissaoMesAno);
+      }
+
+      const { data: existingExpense } = await matchQuery.maybeSingle();
+
+      if (existingExpense) {
+        // Update existing expense: add value
+        const newTotal = Number(existingExpense.valor_total) + Number(extracted.valor);
+        await supabase
+          .from("expenses")
+          .update({ valor_total: newTotal })
+          .eq("id", existingExpense.id);
+        expenseId = existingExpense.id;
+      } else {
+        // Create new expense
+        const { data: expenseData, error: expError } = await supabase
+          .from("expenses")
+          .insert({
+            user_id: doc.user_id,
+            estabelecimento: extracted.estabelecimento,
+            cnpj_cpf: extracted.cnpj || null,
+            category: extracted.type === "boleto" ? "boleto" : extracted.type === "nf" || extracted.type === "danfe" ? "nota_fiscal" : "outros",
+            status: extracted.data_pagamento ? "quitada" : "pendente",
+            nf_numero: extracted.nf_numero || null,
+            valor_total: extracted.valor,
+            emissao_mes_ano: emissaoMesAno,
+          })
+          .select("id")
+          .single();
+
+        if (!expError && expenseData) {
+          expenseId = expenseData.id;
+        } else {
+          console.error("Expense creation error:", expError);
+        }
+      }
+
+      if (expenseId) {
         await supabase
           .from("documents")
-          .update({ expense_id: expenseData.id })
+          .update({ expense_id: expenseId })
           .eq("id", document_id);
-      } else {
-        console.error("Expense creation error:", expError);
       }
     }
 

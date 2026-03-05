@@ -34,21 +34,36 @@ export default function DocumentsPage() {
         const parts = dateStr.split('/');
         if (parts.length === 3) emissaoMesAno = `${parts[1]}-${parts[2]}`;
       }
-      const { data: expData, error: expErr } = await supabase.from('expenses').insert({
-        user_id: doc.user_id,
-        estabelecimento: ext.estabelecimento,
-        cnpj_cpf: ext.cnpj || null,
-        category: doc.type === 'boleto' ? 'boleto' : (doc.type === 'nf' || doc.type === 'danfe') ? 'nota_fiscal' : 'outros',
-        status: ext.data_pagamento ? 'quitada' : 'pendente',
-        nf_numero: ext.nf_numero || null,
-        valor_total: ext.valor,
-        emissao_mes_ano: emissaoMesAno,
-      }).select('id').single();
-      if (!expErr && expData) {
-        await supabase.from('documents').update({ expense_id: expData.id }).eq('id', doc.id);
-        ok++;
+
+      // Check for existing expense
+      let expenseId: string | null = null;
+      const matchQuery = supabase.from('expenses').select('id, valor_total')
+        .eq('user_id', doc.user_id).eq('estabelecimento', ext.estabelecimento);
+      if (emissaoMesAno) matchQuery.eq('emissao_mes_ano', emissaoMesAno);
+      const { data: existing } = await matchQuery.maybeSingle();
+
+      if (existing) {
+        const newTotal = Number(existing.valor_total) + Number(ext.valor);
+        await supabase.from('expenses').update({ valor_total: newTotal }).eq('id', existing.id);
+        expenseId = existing.id;
       } else {
-        fail++;
+        const { data: expData, error: expErr } = await supabase.from('expenses').insert({
+          user_id: doc.user_id,
+          estabelecimento: ext.estabelecimento,
+          cnpj_cpf: ext.cnpj || null,
+          category: doc.type === 'boleto' ? 'boleto' : (doc.type === 'nf' || doc.type === 'danfe') ? 'nota_fiscal' : 'outros',
+          status: ext.data_pagamento ? 'quitada' : 'pendente',
+          nf_numero: ext.nf_numero || null,
+          valor_total: ext.valor,
+          emissao_mes_ano: emissaoMesAno,
+        }).select('id').single();
+        if (!expErr && expData) expenseId = expData.id;
+        else { fail++; continue; }
+      }
+
+      if (expenseId) {
+        await supabase.from('documents').update({ expense_id: expenseId }).eq('id', doc.id);
+        ok++;
       }
     }
     setGeneratingExpenses(false);
