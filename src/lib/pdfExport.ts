@@ -61,7 +61,7 @@ async function generateDocumentPage(
     borderColor: rgb(0.85, 0.87, 0.9),
     borderWidth: 1,
   });
-  page.drawText('⚠ Documento placeholder — em produção, o conteúdo real do PDF será inserido aqui.', {
+  page.drawText('Documento placeholder - em producao, o conteudo real do PDF sera inserido aqui.', {
     x: margin + 15, y: y - 35, size: 9, font, color: rgb(0.5, 0.5, 0.5),
   });
 }
