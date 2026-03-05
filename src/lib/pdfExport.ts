@@ -75,7 +75,7 @@ export async function exportSingleDocumentPDF(doc: Document, siblingDocs: Docume
 
   const bytes = await pdfDoc.save();
   const filename = buildDocumentFilename(doc, siblingDocs);
-  triggerDownload(new Blob([bytes], { type: 'application/pdf' }), filename);
+  triggerDownload(new Blob([bytes.buffer as ArrayBuffer], { type: 'application/pdf' }), filename);
 }
 
 export async function exportMergedPDF(expense: Expense, docs: Document[]) {
