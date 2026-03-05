@@ -17,6 +17,7 @@ export interface Document {
     data_pagamento?: string;
     nf_numero?: string;
     cnpj?: string;
+    meio_pagamento?: 'pix' | 'boleto' | 'ted';
   };
   expense_id?: string;
 }
