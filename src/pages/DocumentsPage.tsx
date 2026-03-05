@@ -2,10 +2,12 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useDocuments, useReprocessDocument } from '@/hooks/useDocuments';
 import DocumentTypeBadge from '@/components/DocumentTypeBadge';
-import { AlertTriangle, CheckCircle, RefreshCw, Loader2 } from 'lucide-react';
+import { AlertTriangle, CheckCircle, RefreshCw, Loader2, PlusCircle } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
+import { useQueryClient } from '@tanstack/react-query';
 
 export default function DocumentsPage() {
   const { data: documents = [], isLoading } = useDocuments();
