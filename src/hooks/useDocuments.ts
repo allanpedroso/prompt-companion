@@ -60,17 +60,33 @@ export function useUploadDocument() {
         .single();
       if (insertError) throw insertError;
 
-      // Trigger AI processing in background (don't await to keep upload fast)
       supabase.functions.invoke('process-document', {
         body: { document_id: insertData.id },
       }).then(({ error }) => {
         if (error) console.error('AI processing error:', error);
-        // Invalidate to refresh with AI results
         qc.invalidateQueries({ queryKey: ['documents'] });
         qc.invalidateQueries({ queryKey: ['expenses-with-docs'] });
       });
 
       return { id: insertData.id, filePath };
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['documents'] });
+      qc.invalidateQueries({ queryKey: ['expenses-with-docs'] });
+    },
+  });
+}
+
+export function useReprocessDocument() {
+  const qc = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (documentId: string) => {
+      const { data, error } = await supabase.functions.invoke('process-document', {
+        body: { document_id: documentId },
+      });
+      if (error) throw error;
+      return data;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['documents'] });
