@@ -9,13 +9,27 @@ import {
   formatMoneyBR,
 } from './documentNaming';
 
-function triggerDownload(blob: Blob, filename: string) {
+function triggerDownloadPdf(data: Uint8Array, filename: string) {
+  const blob = new Blob([data as unknown as BlobPart], { type: 'application/pdf' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
   a.download = filename;
   a.click();
   URL.revokeObjectURL(url);
+}
+
+function triggerDownloadBlob(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function stripAccents(str: string): string {
+  return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^\x00-\x7F]/g, '');
 }
 
 async function generateDocumentPage(
@@ -29,7 +43,7 @@ async function generateDocumentPage(
   const margin = 50;
   let y = height - margin;
 
-  const title = typeLabels[doc.type]?.toUpperCase() || 'DOCUMENTO';
+  const title = stripAccents(typeLabels[doc.type]?.toUpperCase() || 'DOCUMENTO');
   page.drawText(title, { x: margin, y, size: 18, font: boldFont, color: rgb(0.1, 0.4, 0.3) });
   y -= 35;
 
@@ -49,8 +63,8 @@ async function generateDocumentPage(
   lines.push(['Arquivo Original:', doc.original_filename]);
 
   for (const [label, value] of lines) {
-    page.drawText(label, { x: margin, y, size: 10, font: boldFont, color: rgb(0.3, 0.3, 0.3) });
-    page.drawText(value, { x: margin + 130, y, size: 10, font, color: rgb(0.1, 0.1, 0.1) });
+    page.drawText(stripAccents(label), { x: margin, y, size: 10, font: boldFont, color: rgb(0.3, 0.3, 0.3) });
+    page.drawText(stripAccents(value), { x: margin + 130, y, size: 10, font, color: rgb(0.1, 0.1, 0.1) });
     y -= 20;
   }
 
@@ -61,7 +75,7 @@ async function generateDocumentPage(
     borderColor: rgb(0.85, 0.87, 0.9),
     borderWidth: 1,
   });
-  page.drawText('⚠ Documento placeholder — em produção, o conteúdo real do PDF será inserido aqui.', {
+  page.drawText('Documento placeholder - em producao, o conteudo real do PDF sera inserido aqui.', {
     x: margin + 15, y: y - 35, size: 9, font, color: rgb(0.5, 0.5, 0.5),
   });
 }
@@ -75,7 +89,7 @@ export async function exportSingleDocumentPDF(doc: Document, siblingDocs: Docume
 
   const bytes = await pdfDoc.save();
   const filename = buildDocumentFilename(doc, siblingDocs);
-  triggerDownload(new Blob([bytes.buffer as ArrayBuffer], { type: 'application/pdf' }), filename);
+  triggerDownloadPdf(bytes, filename);
 }
 
 export async function exportMergedPDF(expense: Expense, docs: Document[]) {
@@ -92,7 +106,7 @@ export async function exportMergedPDF(expense: Expense, docs: Document[]) {
 
   const bytes = await pdfDoc.save();
   const filename = buildMergeFilename(expense, sorted);
-  triggerDownload(new Blob([bytes.buffer as ArrayBuffer], { type: 'application/pdf' }), filename);
+  triggerDownloadPdf(bytes, filename);
 }
 
 export async function exportDocumentsAsZip(expense: Expense, docs: Document[]) {
@@ -113,5 +127,5 @@ export async function exportDocumentsAsZip(expense: Expense, docs: Document[]) {
   const blob = await zip.generateAsync({ type: 'blob' });
   const zipName = `${expense.estabelecimento}_${expense.emissao_mes_ano}_docs.zip`
     .replace(/[<>:"/\\|?*]/g, '');
-  triggerDownload(blob, zipName);
+  triggerDownloadBlob(blob, zipName);
 }
