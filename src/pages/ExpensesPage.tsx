@@ -237,6 +237,14 @@ export default function ExpensesPage() {
           </motion.div>
         ))}
       </div>
+
+      {exportExpense && (
+        <ExportDocumentsDialog
+          expense={exportExpense}
+          open={!!exportExpense}
+          onOpenChange={(open) => { if (!open) setExportExpense(null); }}
+        />
+      )}
     </div>
   );
 }
