@@ -154,6 +154,12 @@ export default function ExpensesPage() {
         </Select>
         {hasFilters && <Button variant="ghost" size="sm" className="h-9 text-xs" onClick={() => { setSelectedMonth('all'); setSelectedYear('all'); }}><X className="w-3.5 h-3.5 mr-1" /> Limpar</Button>}
         <div className="ml-auto flex items-center gap-2">
+          {duplicateCount > 0 && (
+            <Button variant="outline" size="sm" className="h-9 text-xs" onClick={handleConsolidate} disabled={consolidating}>
+              {consolidating ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <Merge className="w-3.5 h-3.5 mr-1" />}
+              Consolidar duplicatas ({duplicateCount})
+            </Button>
+          )}
           <Button variant="outline" size="sm" className="h-9 text-xs" onClick={toggleAll}>
             {selectedIds.size === filteredExpenses.length && filteredExpenses.length > 0 ? 'Desmarcar todos' : 'Selecionar todos'}
           </Button>
