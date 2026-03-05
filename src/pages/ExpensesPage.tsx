@@ -2,12 +2,14 @@ import { motion } from 'framer-motion';
 import { mockExpenses, categoryLabels, type Expense } from '@/data/mockData';
 import StatusBadge from '@/components/StatusBadge';
 import DocumentTypeBadge from '@/components/DocumentTypeBadge';
-import { ChevronRight, FileText, Download, Filter, X, CalendarIcon } from 'lucide-react';
+import ExportDocumentsDialog from '@/components/ExportDocumentsDialog';
+import { ChevronRight, FileText, Download, Filter, X, CalendarIcon, FileDown } from 'lucide-react';
 import { useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
+import { exportSingleDocumentPDF } from '@/lib/pdfExport';
 
 const months = [
   { value: 'all', label: 'Todos os meses' },
