@@ -52,7 +52,7 @@ export const mockDocuments: Document[] = [
     type: 'comprovante',
     confidence: 92,
     created_at: '2025-01-15T10:31:00Z',
-    extracted: { estabelecimento: 'Copel Distribuição', valor: 287.45, data_pagamento: '2025-01-09' },
+    extracted: { estabelecimento: 'Copel Distribuição', valor: 287.45, data_pagamento: '2025-01-09', meio_pagamento: 'pix' },
     expense_id: 'exp1',
   },
   {
