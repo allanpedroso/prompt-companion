@@ -97,10 +97,11 @@ export default function ExpensesPage() {
           ? Number(primary.valor_total)
           : Math.max(...sorted.map(e => Number(e.valor_total)));
 
-        // Merge NF numbers
+        // Merge NF numbers and period
         const nfNumero = sorted.find(e => e.nf_numero)?.nf_numero || primary.nf_numero;
+        const emissaoMesAno = sorted.find(e => e.emissao_mes_ano)?.emissao_mes_ano || primary.emissao_mes_ano;
 
-        await supabase.from('expenses').update({ valor_total: finalValor, nf_numero: nfNumero }).eq('id', primary.id);
+        await supabase.from('expenses').update({ valor_total: finalValor, nf_numero: nfNumero, emissao_mes_ano: emissaoMesAno }).eq('id', primary.id);
 
         for (const dup of duplicates) {
           if (dup.documents?.length) {
