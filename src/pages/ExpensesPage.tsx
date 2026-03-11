@@ -247,6 +247,11 @@ export default function ExpensesPage() {
           </motion.div>
         ))}
       </div>
+      <DocumentViewerModal
+        doc={viewingDoc}
+        open={!!viewingDoc}
+        onOpenChange={(open) => { if (!open) setViewingDoc(null); }}
+      />
     </div>
   );
 }
