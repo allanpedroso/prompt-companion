@@ -48,8 +48,10 @@ export default function DocumentViewerModal({ doc, open, onOpenChange }: Documen
   const [pageNum, setPageNum] = useState(1);
   const [totalPages, setTotalPages] = useState(0);
   const [rendering, setRendering] = useState(false);
+  const [zoom, setZoom] = useState(100);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const pdfRef = useRef<any>(null);
+  const baseScaleRef = useRef(1);
 
   const isPdf = doc?.original_filename?.toLowerCase().endsWith('.pdf');
   const isImage = /\.(jpg|jpeg|png|webp)$/i.test(doc?.original_filename || '');
