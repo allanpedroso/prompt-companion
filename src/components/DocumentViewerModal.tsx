@@ -141,7 +141,7 @@ export default function DocumentViewerModal({ doc, open, onOpenChange }: Documen
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl w-full h-[90vh] flex flex-col p-0 gap-0 [&>button.absolute]:right-2 [&>button.absolute]:top-2 [&>button.absolute]:z-50">
         <DialogHeader className="px-6 py-4 border-b border-border flex-row items-center justify-between space-y-0 shrink-0">
-          <div className="min-w-0 flex-1 pr-4">
+          <div className="min-w-0 flex-1 pr-10">
             <DialogTitle className="text-sm font-semibold truncate">{filename}</DialogTitle>
             <p className="text-xs text-muted-foreground truncate mt-0.5">{doc?.original_filename}</p>
           </div>
