@@ -231,7 +231,7 @@ serve(async (req) => {
       let expenseId: string | null = null;
       const matchQuery = supabase
         .from("expenses")
-        .select("id, valor_total")
+        .select("id, valor_total, nf_numero")
         .eq("user_id", doc.user_id)
         .eq("estabelecimento", extracted.estabelecimento);
 
@@ -239,15 +239,38 @@ serve(async (req) => {
         matchQuery.eq("emissao_mes_ano", emissaoMesAno);
       }
 
-      const { data: existingExpense } = await matchQuery.maybeSingle();
+      const { data: existingExpenses } = await matchQuery;
+
+      // Try to find a matching expense: same value = same transaction (boleto + NF etc)
+      let existingExpense = existingExpenses?.find(
+        (e) => Math.abs(Number(e.valor_total) - Number(extracted.valor)) < 0.01
+      );
+      // Or match by NF number
+      if (!existingExpense && extracted.nf_numero) {
+        existingExpense = existingExpenses?.find(
+          (e) => e.nf_numero === extracted.nf_numero
+        );
+      }
+      // Fallback: any expense for same vendor+period
+      if (!existingExpense && existingExpenses?.length) {
+        existingExpense = existingExpenses[0];
+      }
 
       if (existingExpense) {
-        // Update existing expense: add value
-        const newTotal = Number(existingExpense.valor_total) + Number(extracted.valor);
-        await supabase
-          .from("expenses")
-          .update({ valor_total: newTotal })
-          .eq("id", existingExpense.id);
+        // Same value = same transaction, just link document. Different value = update total
+        const existingVal = Number(existingExpense.valor_total);
+        const newVal = Number(extracted.valor);
+        const updates: Record<string, unknown> = {};
+        if (Math.abs(existingVal - newVal) >= 0.01) {
+          // Different value: keep the higher one (likely the correct total)
+          updates.valor_total = Math.max(existingVal, newVal);
+        }
+        if (extracted.nf_numero && !existingExpense.nf_numero) {
+          updates.nf_numero = extracted.nf_numero;
+        }
+        if (Object.keys(updates).length > 0) {
+          await supabase.from("expenses").update(updates).eq("id", existingExpense.id);
+        }
         expenseId = existingExpense.id;
       } else {
         // Create new expense

@@ -35,16 +35,25 @@ export default function DocumentsPage() {
         if (parts.length === 3) emissaoMesAno = `${parts[1]}-${parts[2]}`;
       }
 
-      // Check for existing expense
+      // Check for existing expense (same vendor + period)
       let expenseId: string | null = null;
-      const matchQuery = supabase.from('expenses').select('id, valor_total')
+      const matchQuery = supabase.from('expenses').select('id, valor_total, nf_numero')
         .eq('user_id', doc.user_id).eq('estabelecimento', ext.estabelecimento);
       if (emissaoMesAno) matchQuery.eq('emissao_mes_ano', emissaoMesAno);
-      const { data: existing } = await matchQuery.maybeSingle();
+      const { data: existingList } = await matchQuery;
+
+      // Match by value (same transaction) or NF number
+      let existing = existingList?.find(e => Math.abs(Number(e.valor_total) - Number(ext.valor)) < 0.01);
+      if (!existing && ext.nf_numero) existing = existingList?.find(e => e.nf_numero === ext.nf_numero);
+      if (!existing && existingList?.length) existing = existingList[0];
 
       if (existing) {
-        const newTotal = Number(existing.valor_total) + Number(ext.valor);
-        await supabase.from('expenses').update({ valor_total: newTotal }).eq('id', existing.id);
+        const updates: Record<string, unknown> = {};
+        if (Math.abs(Number(existing.valor_total) - Number(ext.valor)) >= 0.01) {
+          updates.valor_total = Math.max(Number(existing.valor_total), Number(ext.valor));
+        }
+        if (ext.nf_numero && !existing.nf_numero) updates.nf_numero = ext.nf_numero;
+        if (Object.keys(updates).length > 0) await supabase.from('expenses').update(updates).eq('id', existing.id);
         expenseId = existing.id;
       } else {
         const { data: expData, error: expErr } = await supabase.from('expenses').insert({

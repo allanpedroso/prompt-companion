@@ -69,9 +69,17 @@ export default function ExpensesPage() {
         const primary = sorted[0];
         const duplicates = sorted.slice(1);
 
-        const totalValor = sorted.reduce((sum, e) => sum + Number(e.valor_total), 0);
+        // Smart merge: if all values are the same, it's the same transaction (boleto+NF etc)
+        // If different, keep the max value
+        const allSameValue = sorted.every(e => Math.abs(Number(e.valor_total) - Number(sorted[0].valor_total)) < 0.01);
+        const finalValor = allSameValue
+          ? Number(primary.valor_total)
+          : Math.max(...sorted.map(e => Number(e.valor_total)));
 
-        await supabase.from('expenses').update({ valor_total: totalValor }).eq('id', primary.id);
+        // Merge NF numbers
+        const nfNumero = sorted.find(e => e.nf_numero)?.nf_numero || primary.nf_numero;
+
+        await supabase.from('expenses').update({ valor_total: finalValor, nf_numero: nfNumero }).eq('id', primary.id);
 
         for (const dup of duplicates) {
           if (dup.documents?.length) {
