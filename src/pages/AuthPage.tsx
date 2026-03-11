@@ -31,14 +31,8 @@ export default function AuthPage() {
         className="w-full max-w-md"
       >
         {/* Logo */}
-        <div className="flex items-center gap-3 justify-center mb-8">
-          <div className="w-10 h-10 rounded-lg bg-primary flex items-center justify-center">
-            <FileText className="w-5 h-5 text-primary-foreground" />
-          </div>
-          <div>
-            <h1 className="text-xl font-bold text-foreground">DocFinance</h1>
-            <p className="text-xs text-muted-foreground">Organização financeira</p>
-          </div>
+        <div className="flex flex-col items-center mb-8">
+          <img src="/gestcorp_logo_full.png" alt="Gest Corp" className="w-48 mx-auto mb-6 object-contain" />
         </div>
 
         <div className="glass-card p-6">

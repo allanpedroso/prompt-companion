@@ -21,13 +21,13 @@ export default function AppSidebar() {
     <aside className="fixed left-0 top-0 bottom-0 w-64 bg-sidebar flex flex-col z-50"
       style={{ background: 'var(--gradient-sidebar)' }}>
       {/* Logo */}
-      <div className="px-6 py-6 flex items-center gap-3">
-        <div className="w-9 h-9 rounded-lg bg-sidebar-primary flex items-center justify-center">
-          <FileText className="w-5 h-5 text-sidebar-primary-foreground" />
-        </div>
-        <div>
-          <h1 className="text-base font-bold text-sidebar-accent-foreground tracking-tight">DocFinance</h1>
-          <p className="text-[11px] text-sidebar-foreground">Organização financeira</p>
+      <div className="px-6 py-6">
+        <div className="flex items-center gap-2.5">
+          <img src="/gestcorp_icon.png" alt="Gest Corp" className="w-8 h-8 object-contain" />
+          <div className="flex flex-col leading-tight">
+            <span className="text-sm font-bold text-white">Gest Corp</span>
+            <span className="text-[10px] text-blue-400/70">Soluções Integradas</span>
+          </div>
         </div>
       </div>
 
