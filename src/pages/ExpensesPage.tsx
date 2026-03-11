@@ -84,7 +84,7 @@ export default function ExpensesPage() {
       const groups = findDuplicateGroups(expenses);
 
       let merged = 0;
-      for (const [, group] of groups) {
+      for (const group of groups) {
         if (group.length <= 1) continue;
         const sorted = [...group].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
         const primary = sorted[0];
