@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Download, Loader2, FileQuestion, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Download, Loader2, FileQuestion, ChevronLeft, ChevronRight, ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { buildDocumentFilename } from '@/lib/documentNaming';
@@ -48,8 +48,10 @@ export default function DocumentViewerModal({ doc, open, onOpenChange }: Documen
   const [pageNum, setPageNum] = useState(1);
   const [totalPages, setTotalPages] = useState(0);
   const [rendering, setRendering] = useState(false);
+  const [zoom, setZoom] = useState(100);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const pdfRef = useRef<any>(null);
+  const baseScaleRef = useRef(1);
 
   const isPdf = doc?.original_filename?.toLowerCase().endsWith('.pdf');
   const isImage = /\.(jpg|jpeg|png|webp)$/i.test(doc?.original_filename || '');
@@ -61,6 +63,7 @@ export default function DocumentViewerModal({ doc, open, onOpenChange }: Documen
     setLoading(true);
     setPageNum(1);
     setTotalPages(0);
+    setZoom(100);
     pdfRef.current = null;
     supabase.storage.from('documents').download(doc.file_path).then(({ data, error }) => {
       if (error || !data) { setBlob(null); }
@@ -95,12 +98,14 @@ export default function DocumentViewerModal({ doc, open, onOpenChange }: Documen
       const canvas = canvasRef.current!;
       const container = canvas.parentElement!;
       const viewport = page.getViewport({ scale: 1 });
-      const scale = Math.min(
+      const fitScale = Math.min(
         (container.clientWidth - 32) / viewport.width,
         (container.clientHeight - 32) / viewport.height,
         2
       );
-      const scaled = page.getViewport({ scale });
+      baseScaleRef.current = fitScale;
+      const finalScale = fitScale * (zoom / 100);
+      const scaled = page.getViewport({ scale: finalScale });
       canvas.width = scaled.width;
       canvas.height = scaled.height;
       const ctx = canvas.getContext('2d')!;
@@ -109,7 +114,7 @@ export default function DocumentViewerModal({ doc, open, onOpenChange }: Documen
       });
     });
     return () => { cancelled = true; };
-  }, [pageNum, totalPages, isPdf]);
+  }, [pageNum, totalPages, isPdf, zoom]);
 
   const handleDownload = async () => {
     if (!blob) return;
@@ -168,6 +173,39 @@ export default function DocumentViewerModal({ doc, open, onOpenChange }: Documen
                   disabled={pageNum >= totalPages}
                 >
                   <ChevronRight className="w-4 h-4" />
+                </Button>
+              </div>
+            )}
+            {isPdf && blob && (
+              <div className="flex items-center gap-1 border-l border-border pl-2">
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="h-8 w-8"
+                  onClick={() => setZoom(z => Math.max(50, z - 25))}
+                  disabled={zoom <= 50}
+                  title="Diminuir zoom"
+                >
+                  <ZoomOut className="w-4 h-4" />
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-8 px-2 text-xs text-muted-foreground min-w-[3rem] justify-center"
+                  onClick={() => setZoom(100)}
+                  title="Resetar zoom"
+                >
+                  {zoom}%
+                </Button>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="h-8 w-8"
+                  onClick={() => setZoom(z => Math.min(200, z + 25))}
+                  disabled={zoom >= 200}
+                  title="Aumentar zoom"
+                >
+                  <ZoomIn className="w-4 h-4" />
                 </Button>
               </div>
             )}
