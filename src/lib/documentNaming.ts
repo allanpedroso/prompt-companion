@@ -9,10 +9,12 @@ export function sanitizeFilename(text: string): string {
 
 export function formatDateBR(dateStr?: string): string {
   if (!dateStr) return '';
+  // Handle DD/MM/YYYY format from AI
   if (dateStr.includes('/')) {
     const [d, m, y] = dateStr.split('/');
     return `${d}-${m}-${y}`;
   }
+  // Handle YYYY-MM-DD format
   const parts = dateStr.split('-');
   if (parts.length === 3) return `${parts[2]}-${parts[1]}-${parts[0]}`;
   return dateStr;
@@ -20,10 +22,12 @@ export function formatDateBR(dateStr?: string): string {
 
 export function formatMonthYear(dateStr?: string): string {
   if (!dateStr) return '';
+  // Handle DD/MM/YYYY format from AI
   if (dateStr.includes('/')) {
     const [, m, y] = dateStr.split('/');
     return `${m}-${y}`;
   }
+  // Handle YYYY-MM-DD format
   const parts = dateStr.split('-');
   if (parts.length === 3) return `${parts[1]}-${parts[0]}`;
   return dateStr;

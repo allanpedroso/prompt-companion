@@ -1,19 +1,3 @@
-export async function downloadDocumentFromStorage(doc: any): Promise<void> {
-  const { supabase } = await import('@/integrations/supabase/client');
-  const filePath = doc.file_path;
-  if (!filePath) throw new Error('file_path não disponível');
-  const { data, error } = await supabase.storage.from('documents').download(filePath);
-  if (error || !data) throw new Error(error?.message || 'Falha ao baixar arquivo');
-  const { buildDocumentFilename } = await import('./documentNaming');
-  const filename = buildDocumentFilename(doc, []);
-  const url = URL.createObjectURL(data);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(url);
-}
-
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 import JSZip from 'jszip';
 import type { Document, Expense } from '@/data/mockData';
@@ -46,6 +30,24 @@ function triggerDownloadBlob(blob: Blob, filename: string) {
 
 function stripAccents(str: string): string {
   return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^\x00-\x7F]/g, '');
+}
+
+// Download real file from Supabase Storage with correct naming
+export async function downloadDocumentFromStorage(doc: any): Promise<void> {
+  const { supabase } = await import('@/integrations/supabase/client');
+  const filePath = doc.file_path;
+  if (!filePath) throw new Error('file_path não disponível');
+
+  const { data, error } = await supabase.storage.from('documents').download(filePath);
+  if (error || !data) throw new Error(error?.message || 'Falha ao baixar arquivo');
+
+  const filename = buildDocumentFilename(doc, []);
+  const url = URL.createObjectURL(data);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 async function generateDocumentPage(
