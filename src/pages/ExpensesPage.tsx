@@ -212,7 +212,7 @@ export default function ExpensesPage() {
     try {
       if (toExport.length === 1) {
         const exp = toExport[0];
-        await exportExpenseMergedPDF(exp as any, exp.documents || []);
+        await exportExpenseMergedPDF(exp as any, (exp.documents || []) as any);
         toast.success('PDF exportado com sucesso');
       } else {
         await exportMultipleExpensesZip(toExport as any);
