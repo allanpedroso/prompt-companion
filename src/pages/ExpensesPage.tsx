@@ -43,6 +43,7 @@ export default function ExpensesPage() {
   const [selectedYear, setSelectedYear] = useState('all');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [consolidating, setConsolidating] = useState(false);
+  const [viewingDoc, setViewingDoc] = useState<any | null>(null);
 
   // Smart duplicate detection: group by estabelecimento + (emissao_mes_ano OR same valor_total)
   const findDuplicateGroups = (list: typeof expenses) => {
