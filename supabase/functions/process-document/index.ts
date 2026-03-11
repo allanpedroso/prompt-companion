@@ -280,7 +280,17 @@ serve(async (req) => {
             user_id: doc.user_id,
             estabelecimento: extracted.estabelecimento,
             cnpj_cpf: extracted.cnpj || null,
-            category: extracted.type === "boleto" ? "boleto" : extracted.type === "nf" || extracted.type === "danfe" ? "nota_fiscal" : "outros",
+            category: (() => {
+              const nome = (extracted.estabelecimento || '').toLowerCase();
+              if (/copel|cemig|light|eletropaulo|energia|eletric|celpe|coelba|ampla/.test(nome)) return 'energia';
+              if (/sanepar|sabesp|cedae|cagece|saneago|agua|saneamento/.test(nome)) return 'agua';
+              if (/fibra|internet|banda larga|vivo|claro|tim|oi|net|gvt|telecom/.test(nome)) return nome.includes('fon') ? 'telefone' : 'internet';
+              if (/aluguel|imobili/.test(nome)) return 'aluguel';
+              if (/condomin/.test(nome)) return 'condominio';
+              if (/mercado|supermercado|atacado/.test(nome)) return 'mercado';
+              if (/posto|combustiv|shell|petrobras|ipiranga/.test(nome)) return 'combustivel';
+              return 'outros';
+            })(),
             status: extracted.data_pagamento ? "quitada" : "pendente",
             nf_numero: extracted.nf_numero || null,
             valor_total: extracted.valor,

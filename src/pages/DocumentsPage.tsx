@@ -60,7 +60,17 @@ export default function DocumentsPage() {
           user_id: doc.user_id,
           estabelecimento: ext.estabelecimento,
           cnpj_cpf: ext.cnpj || null,
-          category: doc.type === 'boleto' ? 'boleto' : (doc.type === 'nf' || doc.type === 'danfe') ? 'nota_fiscal' : 'outros',
+          category: (() => {
+            const nome = ((ext as any).estabelecimento || '').toLowerCase();
+            if (/copel|cemig|light|eletropaulo|energia|eletric|celpe|coelba|ampla/.test(nome)) return 'energia';
+            if (/sanepar|sabesp|cedae|cagece|saneago|agua|saneamento/.test(nome)) return 'agua';
+            if (/fibra|internet|banda larga|vivo|claro|tim|oi|net|gvt|telecom/.test(nome)) return nome.includes('fon') ? 'telefone' : 'internet';
+            if (/aluguel|imobili/.test(nome)) return 'aluguel';
+            if (/condomin/.test(nome)) return 'condominio';
+            if (/mercado|supermercado|atacado/.test(nome)) return 'mercado';
+            if (/posto|combustiv|shell|petrobras|ipiranga/.test(nome)) return 'combustivel';
+            return 'outros';
+          })(),
           status: ext.data_pagamento ? 'quitada' : 'pendente',
           nf_numero: ext.nf_numero || null,
           valor_total: ext.valor,
