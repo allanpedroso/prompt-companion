@@ -2,14 +2,14 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useDocuments, useReprocessDocument } from '@/hooks/useDocuments';
 import DocumentTypeBadge from '@/components/DocumentTypeBadge';
-import DocumentViewerModal from '@/components/DocumentViewerModal';
-import { downloadDocumentFromStorage } from '@/lib/pdfExport';
 import { AlertTriangle, CheckCircle, RefreshCw, Loader2, PlusCircle, Eye, Download } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
+import DocumentViewerModal from '@/components/DocumentViewerModal';
+import { downloadDocumentFromStorage } from '@/lib/pdfExport';
 
 export default function DocumentsPage() {
   const { data: documents = [], isLoading } = useDocuments();
@@ -18,7 +18,7 @@ export default function DocumentsPage() {
   const [processingIds, setProcessingIds] = useState<Set<string>>(new Set());
   const [processingAll, setProcessingAll] = useState(false);
   const [generatingExpenses, setGeneratingExpenses] = useState(false);
-  const [viewingDoc, setViewingDoc] = useState<any | null>(null);
+  const [viewingDoc, setViewingDoc] = useState<typeof documents[0] | null>(null);
 
   const docsWithoutExpense = documents.filter(d => !d.expense_id && (d.confidence ?? 0) >= 70 && (d.extracted as any)?.estabelecimento && (d.extracted as any)?.valor);
 
@@ -57,21 +57,23 @@ export default function DocumentsPage() {
         if (Object.keys(updates).length > 0) await supabase.from('expenses').update(updates).eq('id', existing.id);
         expenseId = existing.id;
       } else {
+        const nome = (ext.estabelecimento || '').toLowerCase();
+        const category = (() => {
+          if (/copel|cemig|light|eletropaulo|energia|eletric|celpe|coelba|ampla/.test(nome)) return 'energia';
+          if (/sanepar|sabesp|cedae|cagece|saneago|agua|saneamento/.test(nome)) return 'agua';
+          if (/fibra|internet|banda larga|vivo|claro|tim|oi|net|gvt|telecom/.test(nome)) return nome.includes('fon') ? 'telefone' : 'internet';
+          if (/aluguel|imobili/.test(nome)) return 'aluguel';
+          if (/condomin/.test(nome)) return 'condominio';
+          if (/mercado|supermercado|atacado/.test(nome)) return 'mercado';
+          if (/posto|combustiv|shell|petrobras|ipiranga/.test(nome)) return 'combustivel';
+          return 'outros';
+        })();
+
         const { data: expData, error: expErr } = await supabase.from('expenses').insert({
           user_id: doc.user_id,
           estabelecimento: ext.estabelecimento,
           cnpj_cpf: ext.cnpj || null,
-          category: (() => {
-            const nome = ((ext as any).estabelecimento || '').toLowerCase();
-            if (/copel|cemig|light|eletropaulo|energia|eletric|celpe|coelba|ampla/.test(nome)) return 'energia';
-            if (/sanepar|sabesp|cedae|cagece|saneago|agua|saneamento/.test(nome)) return 'agua';
-            if (/fibra|internet|banda larga|vivo|claro|tim|oi|net|gvt|telecom/.test(nome)) return nome.includes('fon') ? 'telefone' : 'internet';
-            if (/aluguel|imobili/.test(nome)) return 'aluguel';
-            if (/condomin/.test(nome)) return 'condominio';
-            if (/mercado|supermercado|atacado/.test(nome)) return 'mercado';
-            if (/posto|combustiv|shell|petrobras|ipiranga/.test(nome)) return 'combustivel';
-            return 'outros';
-          })(),
+          category,
           status: ext.data_pagamento ? 'quitada' : 'pendente',
           nf_numero: ext.nf_numero || null,
           valor_total: ext.valor,
@@ -132,6 +134,15 @@ export default function DocumentsPage() {
     toast.success(`Processados: ${ok} sucesso, ${fail} falha(s)`);
   };
 
+  const handleDownload = async (doc: typeof documents[0]) => {
+    try {
+      await downloadDocumentFromStorage(doc);
+      toast.success('Download iniciado');
+    } catch (e: any) {
+      toast.error(e.message || 'Erro ao baixar');
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="space-y-8">
@@ -183,19 +194,30 @@ export default function DocumentsPage() {
                   <p className="text-xs text-muted-foreground mt-0.5">Confiança: {doc.confidence}%</p>
                 </div>
                 <DocumentTypeBadge type={doc.type as any} />
-                <Button size="sm" variant="outline" onClick={() => handleReprocess(doc.id)} disabled={isProcessing} className="gap-1.5">
-                  {isProcessing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
-                  {isProcessing ? 'Processando...' : 'Reprocessar'}
-                </Button>
-                <Button size="icon" variant="ghost" className="h-8 w-8 shrink-0" title="Visualizar" onClick={() => setViewingDoc(doc)}>
-                  <Eye className="w-4 h-4" />
-                </Button>
-                <Button size="icon" variant="ghost" className="h-8 w-8 shrink-0" title="Baixar" onClick={async () => {
-                  try { await downloadDocumentFromStorage(doc); toast.success('Download iniciado'); }
-                  catch (e: any) { toast.error(e.message || 'Erro ao baixar'); }
-                }}>
-                  <Download className="w-4 h-4" />
-                </Button>
+                <div className="flex items-center gap-1">
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-8 w-8"
+                    title="Visualizar"
+                    onClick={() => setViewingDoc(doc)}
+                  >
+                    <Eye className="w-4 h-4" />
+                  </Button>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-8 w-8"
+                    title="Baixar"
+                    onClick={() => handleDownload(doc)}
+                  >
+                    <Download className="w-4 h-4" />
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={() => handleReprocess(doc.id)} disabled={isProcessing} className="gap-1.5">
+                    {isProcessing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
+                    {isProcessing ? 'Processando...' : 'Reprocessar'}
+                  </Button>
+                </div>
               </motion.div>
             );
           })}
@@ -220,13 +242,22 @@ export default function DocumentsPage() {
             <span className="text-xs font-mono text-muted-foreground">{doc.confidence}%</span>
             <DocumentTypeBadge type={doc.type as any} />
             <div className="flex items-center gap-1">
-              <Button size="icon" variant="ghost" className="h-8 w-8 shrink-0" title="Visualizar" onClick={() => setViewingDoc(doc)}>
+              <Button
+                size="icon"
+                variant="ghost"
+                className="h-8 w-8"
+                title="Visualizar"
+                onClick={() => setViewingDoc(doc)}
+              >
                 <Eye className="w-4 h-4" />
               </Button>
-              <Button size="icon" variant="ghost" className="h-8 w-8 shrink-0" title="Baixar" onClick={async () => {
-                try { await downloadDocumentFromStorage(doc); toast.success('Download iniciado'); }
-                catch (e: any) { toast.error(e.message || 'Erro ao baixar'); }
-              }}>
+              <Button
+                size="icon"
+                variant="ghost"
+                className="h-8 w-8"
+                title="Baixar"
+                onClick={() => handleDownload(doc)}
+              >
                 <Download className="w-4 h-4" />
               </Button>
             </div>

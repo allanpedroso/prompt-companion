@@ -3,7 +3,6 @@ import { useExpensesWithDocuments } from '@/hooks/useExpenses';
 import { categoryLabels } from '@/data/mockData';
 import StatusBadge from '@/components/StatusBadge';
 import DocumentTypeBadge from '@/components/DocumentTypeBadge';
-import DocumentViewerModal from '@/components/DocumentViewerModal';
 import { ChevronRight, FileText, Download, Filter, X, CalendarIcon, Merge, Loader2, Eye } from 'lucide-react';
 import { useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
@@ -13,6 +12,7 @@ import { toast } from 'sonner';
 import { Skeleton } from '@/components/ui/skeleton';
 import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
+import DocumentViewerModal from '@/components/DocumentViewerModal';
 
 const months = [
   { value: 'all', label: 'Todos os meses' },
@@ -45,7 +45,6 @@ export default function ExpensesPage() {
   const [consolidating, setConsolidating] = useState(false);
   const [viewingDoc, setViewingDoc] = useState<any | null>(null);
 
-  // Smart duplicate detection: group by estabelecimento + (emissao_mes_ano OR same valor_total)
   const findDuplicateGroups = (list: typeof expenses) => {
     const groups: typeof expenses[] = [];
     const used = new Set<string>();
@@ -59,12 +58,9 @@ export default function ExpensesPage() {
         if (used.has(list[j].id)) continue;
         if (list[j].estabelecimento !== list[i].estabelecimento) continue;
 
-        // Match by same period
         const samePeriod = list[i].emissao_mes_ano && list[j].emissao_mes_ano &&
           list[i].emissao_mes_ano === list[j].emissao_mes_ano;
-        // Match by same value (boleto + NF for same transaction)
         const sameValue = Math.abs(Number(list[i].valor_total) - Number(list[j].valor_total)) < 0.01;
-        // Match when one has no period (missing data)
         const oneMissingPeriod = !list[i].emissao_mes_ano || !list[j].emissao_mes_ano;
 
         if (samePeriod || (sameValue && oneMissingPeriod) || (sameValue && samePeriod !== false)) {
@@ -84,7 +80,6 @@ export default function ExpensesPage() {
     setConsolidating(true);
     try {
       const groups = findDuplicateGroups(expenses);
-
       let merged = 0;
       for (const group of groups) {
         if (group.length <= 1) continue;
@@ -92,14 +87,11 @@ export default function ExpensesPage() {
         const primary = sorted[0];
         const duplicates = sorted.slice(1);
 
-        // Smart merge: if all values are the same, it's the same transaction (boleto+NF etc)
-        // If different, keep the max value
         const allSameValue = sorted.every(e => Math.abs(Number(e.valor_total) - Number(sorted[0].valor_total)) < 0.01);
         const finalValor = allSameValue
           ? Number(primary.valor_total)
           : Math.max(...sorted.map(e => Number(e.valor_total)));
 
-        // Merge NF numbers and period
         const nfNumero = sorted.find(e => e.nf_numero)?.nf_numero || primary.nf_numero;
         const emissaoMesAno = sorted.find(e => e.emissao_mes_ano)?.emissao_mes_ano || primary.emissao_mes_ano;
 
@@ -230,13 +222,19 @@ export default function ExpensesPage() {
                 <p className="text-xs font-semibold text-muted-foreground mb-3 uppercase tracking-wider">Documentos ({expense.documents.length})</p>
                 <div className="space-y-3">
                   {expense.documents.map((doc: any) => (
-                    <div key={doc.id} className="flex items-start gap-4">
-                      <div className="w-2.5 h-2.5 rounded-full bg-primary mt-1.5" />
+                    <div key={doc.id} className="flex items-center gap-4">
+                      <div className="w-2.5 h-2.5 rounded-full bg-primary mt-0.5 shrink-0" />
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-foreground">{doc.stored_filename || doc.original_filename}</p>
+                        <p className="text-sm font-medium text-foreground truncate">{doc.stored_filename || doc.original_filename}</p>
                         <DocumentTypeBadge type={doc.type as any} />
                       </div>
-                      <Button size="icon" variant="ghost" className="h-7 w-7 shrink-0" title="Visualizar" onClick={() => setViewingDoc(doc)}>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-7 w-7 shrink-0"
+                        title="Visualizar"
+                        onClick={() => setViewingDoc(doc)}
+                      >
                         <Eye className="w-3.5 h-3.5" />
                       </Button>
                     </div>
@@ -247,6 +245,7 @@ export default function ExpensesPage() {
           </motion.div>
         ))}
       </div>
+
       <DocumentViewerModal
         doc={viewingDoc}
         open={!!viewingDoc}
