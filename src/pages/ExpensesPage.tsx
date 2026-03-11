@@ -43,24 +43,45 @@ export default function ExpensesPage() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [consolidating, setConsolidating] = useState(false);
 
-  const duplicateCount = useMemo(() => {
-    const groups = new Map<string, number>();
-    expenses.forEach(e => {
-      const key = `${e.estabelecimento}||${e.emissao_mes_ano || ''}`;
-      groups.set(key, (groups.get(key) || 0) + 1);
-    });
-    return Array.from(groups.values()).filter(c => c > 1).reduce((sum, c) => sum + c - 1, 0);
-  }, [expenses]);
+  // Smart duplicate detection: group by estabelecimento + (emissao_mes_ano OR same valor_total)
+  const findDuplicateGroups = (list: typeof expenses) => {
+    const groups: typeof expenses[] = [];
+    const used = new Set<string>();
+
+    for (let i = 0; i < list.length; i++) {
+      if (used.has(list[i].id)) continue;
+      const group = [list[i]];
+      used.add(list[i].id);
+
+      for (let j = i + 1; j < list.length; j++) {
+        if (used.has(list[j].id)) continue;
+        if (list[j].estabelecimento !== list[i].estabelecimento) continue;
+
+        // Match by same period
+        const samePeriod = list[i].emissao_mes_ano && list[j].emissao_mes_ano &&
+          list[i].emissao_mes_ano === list[j].emissao_mes_ano;
+        // Match by same value (boleto + NF for same transaction)
+        const sameValue = Math.abs(Number(list[i].valor_total) - Number(list[j].valor_total)) < 0.01;
+        // Match when one has no period (missing data)
+        const oneMissingPeriod = !list[i].emissao_mes_ano || !list[j].emissao_mes_ano;
+
+        if (samePeriod || (sameValue && oneMissingPeriod) || (sameValue && samePeriod !== false)) {
+          group.push(list[j]);
+          used.add(list[j].id);
+        }
+      }
+      if (group.length > 1) groups.push(group);
+    }
+    return groups;
+  };
+
+  const duplicateGroups = useMemo(() => findDuplicateGroups(expenses), [expenses]);
+  const duplicateCount = useMemo(() => duplicateGroups.reduce((sum, g) => sum + g.length - 1, 0), [duplicateGroups]);
 
   const handleConsolidate = async () => {
     setConsolidating(true);
     try {
-      const groups = new Map<string, typeof expenses>();
-      expenses.forEach(e => {
-        const key = `${e.estabelecimento}||${e.emissao_mes_ano || ''}`;
-        if (!groups.has(key)) groups.set(key, []);
-        groups.get(key)!.push(e);
-      });
+      const groups = findDuplicateGroups(expenses);
 
       let merged = 0;
       for (const [, group] of groups) {
