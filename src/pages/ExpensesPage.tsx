@@ -236,6 +236,9 @@ export default function ExpensesPage() {
                         <p className="text-sm font-medium text-foreground">{doc.stored_filename || doc.original_filename}</p>
                         <DocumentTypeBadge type={doc.type as any} />
                       </div>
+                      <Button size="icon" variant="ghost" className="h-7 w-7 shrink-0" title="Visualizar" onClick={() => setViewingDoc(doc)}>
+                        <Eye className="w-3.5 h-3.5" />
+                      </Button>
                     </div>
                   ))}
                 </div>
