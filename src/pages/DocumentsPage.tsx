@@ -2,7 +2,9 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useDocuments, useReprocessDocument } from '@/hooks/useDocuments';
 import DocumentTypeBadge from '@/components/DocumentTypeBadge';
-import { AlertTriangle, CheckCircle, RefreshCw, Loader2, PlusCircle } from 'lucide-react';
+import DocumentViewerModal from '@/components/DocumentViewerModal';
+import { downloadDocumentFromStorage } from '@/lib/pdfExport';
+import { AlertTriangle, CheckCircle, RefreshCw, Loader2, PlusCircle, Eye, Download } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
@@ -16,6 +18,7 @@ export default function DocumentsPage() {
   const [processingIds, setProcessingIds] = useState<Set<string>>(new Set());
   const [processingAll, setProcessingAll] = useState(false);
   const [generatingExpenses, setGeneratingExpenses] = useState(false);
+  const [viewingDoc, setViewingDoc] = useState<any | null>(null);
 
   const docsWithoutExpense = documents.filter(d => !d.expense_id && (d.confidence ?? 0) >= 70 && (d.extracted as any)?.estabelecimento && (d.extracted as any)?.valor);
 
@@ -35,14 +38,12 @@ export default function DocumentsPage() {
         if (parts.length === 3) emissaoMesAno = `${parts[1]}-${parts[2]}`;
       }
 
-      // Check for existing expense (same vendor + period)
       let expenseId: string | null = null;
       const matchQuery = supabase.from('expenses').select('id, valor_total, nf_numero')
         .eq('user_id', doc.user_id).eq('estabelecimento', ext.estabelecimento);
       if (emissaoMesAno) matchQuery.eq('emissao_mes_ano', emissaoMesAno);
       const { data: existingList } = await matchQuery;
 
-      // Match by value (same transaction) or NF number
       let existing = existingList?.find(e => Math.abs(Number(e.valor_total) - Number(ext.valor)) < 0.01);
       if (!existing && ext.nf_numero) existing = existingList?.find(e => e.nf_numero === ext.nf_numero);
       if (!existing && existingList?.length) existing = existingList[0];
@@ -60,7 +61,17 @@ export default function DocumentsPage() {
           user_id: doc.user_id,
           estabelecimento: ext.estabelecimento,
           cnpj_cpf: ext.cnpj || null,
-          category: doc.type === 'boleto' ? 'boleto' : (doc.type === 'nf' || doc.type === 'danfe') ? 'nota_fiscal' : 'outros',
+          category: (() => {
+            const nome = ((ext as any).estabelecimento || '').toLowerCase();
+            if (/copel|cemig|light|eletropaulo|energia|eletric|celpe|coelba|ampla/.test(nome)) return 'energia';
+            if (/sanepar|sabesp|cedae|cagece|saneago|agua|saneamento/.test(nome)) return 'agua';
+            if (/fibra|internet|banda larga|vivo|claro|tim|oi|net|gvt|telecom/.test(nome)) return nome.includes('fon') ? 'telefone' : 'internet';
+            if (/aluguel|imobili/.test(nome)) return 'aluguel';
+            if (/condomin/.test(nome)) return 'condominio';
+            if (/mercado|supermercado|atacado/.test(nome)) return 'mercado';
+            if (/posto|combustiv|shell|petrobras|ipiranga/.test(nome)) return 'combustivel';
+            return 'outros';
+          })(),
           status: ext.data_pagamento ? 'quitada' : 'pendente',
           nf_numero: ext.nf_numero || null,
           valor_total: ext.valor,
@@ -176,6 +187,15 @@ export default function DocumentsPage() {
                   {isProcessing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
                   {isProcessing ? 'Processando...' : 'Reprocessar'}
                 </Button>
+                <Button size="icon" variant="ghost" className="h-8 w-8 shrink-0" title="Visualizar" onClick={() => setViewingDoc(doc)}>
+                  <Eye className="w-4 h-4" />
+                </Button>
+                <Button size="icon" variant="ghost" className="h-8 w-8 shrink-0" title="Baixar" onClick={async () => {
+                  try { await downloadDocumentFromStorage(doc); toast.success('Download iniciado'); }
+                  catch (e: any) { toast.error(e.message || 'Erro ao baixar'); }
+                }}>
+                  <Download className="w-4 h-4" />
+                </Button>
               </motion.div>
             );
           })}
@@ -199,9 +219,26 @@ export default function DocumentsPage() {
             </div>
             <span className="text-xs font-mono text-muted-foreground">{doc.confidence}%</span>
             <DocumentTypeBadge type={doc.type as any} />
+            <div className="flex items-center gap-1">
+              <Button size="icon" variant="ghost" className="h-8 w-8 shrink-0" title="Visualizar" onClick={() => setViewingDoc(doc)}>
+                <Eye className="w-4 h-4" />
+              </Button>
+              <Button size="icon" variant="ghost" className="h-8 w-8 shrink-0" title="Baixar" onClick={async () => {
+                try { await downloadDocumentFromStorage(doc); toast.success('Download iniciado'); }
+                catch (e: any) { toast.error(e.message || 'Erro ao baixar'); }
+              }}>
+                <Download className="w-4 h-4" />
+              </Button>
+            </div>
           </motion.div>
         ))}
       </div>
+
+      <DocumentViewerModal
+        doc={viewingDoc}
+        open={!!viewingDoc}
+        onOpenChange={(open) => { if (!open) setViewingDoc(null); }}
+      />
     </div>
   );
 }

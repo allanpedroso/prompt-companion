@@ -9,19 +9,23 @@ export function sanitizeFilename(text: string): string {
 
 export function formatDateBR(dateStr?: string): string {
   if (!dateStr) return '';
-  const parts = dateStr.split('-');
-  if (parts.length === 3) {
-    return `${parts[2]}-${parts[1]}-${parts[0]}`;
+  if (dateStr.includes('/')) {
+    const [d, m, y] = dateStr.split('/');
+    return `${d}-${m}-${y}`;
   }
+  const parts = dateStr.split('-');
+  if (parts.length === 3) return `${parts[2]}-${parts[1]}-${parts[0]}`;
   return dateStr;
 }
 
 export function formatMonthYear(dateStr?: string): string {
   if (!dateStr) return '';
-  const parts = dateStr.split('-');
-  if (parts.length === 3) {
-    return `${parts[1]}-${parts[0]}`;
+  if (dateStr.includes('/')) {
+    const [, m, y] = dateStr.split('/');
+    return `${m}-${y}`;
   }
+  const parts = dateStr.split('-');
+  if (parts.length === 3) return `${parts[1]}-${parts[0]}`;
   return dateStr;
 }
 
@@ -50,31 +54,37 @@ export function buildDocumentFilename(doc: Document, siblingDocs: Document[] = [
         formatMoneyBR(ext.valor),
       ].filter(Boolean);
       const nfNum = findLinkedNfNumber(doc, siblingDocs);
-      if (nfNum) parts.push(`NF${nfNum}`);
+      parts.push(nfNum ? `NF_${nfNum}` : 'SemNF');
       return parts.join('_') + '.pdf';
     }
     case 'nf': {
+      const mesAno = (ext as any).emissao_mes_ano
+        || formatMonthYear(ext.data_pagamento)
+        || formatMonthYear(ext.data_vencimento);
       const parts = [
         'NF',
         ext.nf_numero || '',
-        formatMonthYear(ext.data_vencimento) || '',
+        mesAno,
         sanitizeFilename(ext.estabelecimento || ''),
       ].filter(Boolean);
       return parts.join('_') + '.pdf';
     }
     case 'danfe': {
+      const mesAno = (ext as any).emissao_mes_ano
+        || formatMonthYear(ext.data_pagamento)
+        || formatMonthYear(ext.data_vencimento);
       const parts = [
         'DANFE',
         ext.nf_numero || '',
-        formatMonthYear(ext.data_vencimento) || '',
+        mesAno,
         sanitizeFilename(ext.estabelecimento || ''),
       ].filter(Boolean);
       return parts.join('_') + '.pdf';
     }
     case 'comprovante': {
-      const meio = ext.meio_pagamento?.toUpperCase() || 'PIX';
+      const meio = ext.meio_pagamento?.toUpperCase() || 'Pix';
       const parts = [
-        'Comp',
+        'Comp.',
         formatDateBR(ext.data_pagamento),
         meio,
         sanitizeFilename(ext.estabelecimento || ''),
@@ -109,12 +119,10 @@ export function buildMergeFilename(expense: Expense, docs: Document[]): string {
   const order: DocumentType[] = ['boleto', 'comprovante', 'nf', 'danfe', 'recibo', 'unknown'];
   const sortedTypes = order.filter(t => types.includes(t));
   const typeStr = sortedTypes.map(t => typeShortLabels[t]).join('_');
-
   const parts = [
     sanitizeFilename(expense.estabelecimento),
     expense.emissao_mes_ano,
     typeStr,
   ].filter(Boolean);
-
   return parts.join('_') + '.pdf';
 }

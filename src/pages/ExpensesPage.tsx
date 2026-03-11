@@ -3,7 +3,8 @@ import { useExpensesWithDocuments } from '@/hooks/useExpenses';
 import { categoryLabels } from '@/data/mockData';
 import StatusBadge from '@/components/StatusBadge';
 import DocumentTypeBadge from '@/components/DocumentTypeBadge';
-import { ChevronRight, FileText, Download, Filter, X, CalendarIcon, Merge, Loader2 } from 'lucide-react';
+import DocumentViewerModal from '@/components/DocumentViewerModal';
+import { ChevronRight, FileText, Download, Filter, X, CalendarIcon, Merge, Loader2, Eye } from 'lucide-react';
 import { useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -42,6 +43,7 @@ export default function ExpensesPage() {
   const [selectedYear, setSelectedYear] = useState('all');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [consolidating, setConsolidating] = useState(false);
+  const [viewingDoc, setViewingDoc] = useState<any | null>(null);
 
   // Smart duplicate detection: group by estabelecimento + (emissao_mes_ano OR same valor_total)
   const findDuplicateGroups = (list: typeof expenses) => {
@@ -234,6 +236,9 @@ export default function ExpensesPage() {
                         <p className="text-sm font-medium text-foreground">{doc.stored_filename || doc.original_filename}</p>
                         <DocumentTypeBadge type={doc.type as any} />
                       </div>
+                      <Button size="icon" variant="ghost" className="h-7 w-7 shrink-0" title="Visualizar" onClick={() => setViewingDoc(doc)}>
+                        <Eye className="w-3.5 h-3.5" />
+                      </Button>
                     </div>
                   ))}
                 </div>
@@ -242,6 +247,11 @@ export default function ExpensesPage() {
           </motion.div>
         ))}
       </div>
+      <DocumentViewerModal
+        doc={viewingDoc}
+        open={!!viewingDoc}
+        onOpenChange={(open) => { if (!open) setViewingDoc(null); }}
+      />
     </div>
   );
 }
