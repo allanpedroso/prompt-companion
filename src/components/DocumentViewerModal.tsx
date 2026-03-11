@@ -176,6 +176,39 @@ export default function DocumentViewerModal({ doc, open, onOpenChange }: Documen
                 </Button>
               </div>
             )}
+            {isPdf && blob && (
+              <div className="flex items-center gap-1 border-l border-border pl-2">
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="h-8 w-8"
+                  onClick={() => setZoom(z => Math.max(50, z - 25))}
+                  disabled={zoom <= 50}
+                  title="Diminuir zoom"
+                >
+                  <ZoomOut className="w-4 h-4" />
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-8 px-2 text-xs text-muted-foreground min-w-[3rem] justify-center"
+                  onClick={() => setZoom(100)}
+                  title="Resetar zoom"
+                >
+                  {zoom}%
+                </Button>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="h-8 w-8"
+                  onClick={() => setZoom(z => Math.min(200, z + 25))}
+                  disabled={zoom >= 200}
+                  title="Aumentar zoom"
+                >
+                  <ZoomIn className="w-4 h-4" />
+                </Button>
+              </div>
+            )}
             <Button
               size="sm"
               variant="outline"
