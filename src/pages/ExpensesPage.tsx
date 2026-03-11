@@ -3,16 +3,23 @@ import { useExpensesWithDocuments } from '@/hooks/useExpenses';
 import { categoryLabels } from '@/data/mockData';
 import StatusBadge from '@/components/StatusBadge';
 import DocumentTypeBadge from '@/components/DocumentTypeBadge';
-import { ChevronRight, FileText, Download, Filter, X, CalendarIcon, Merge, Loader2, Eye } from 'lucide-react';
+import { ChevronRight, FileText, Download, Filter, X, CalendarIcon, Merge, Loader2, Eye, FileDown, Files } from 'lucide-react';
 import { useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { toast } from 'sonner';
 import { Skeleton } from '@/components/ui/skeleton';
 import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
 import DocumentViewerModal from '@/components/DocumentViewerModal';
+import {
+  exportExpenseMergedPDF,
+  exportExpenseAsZip,
+  exportMultipleExpensesZip,
+  exportMultipleExpensesIndividualZip,
+} from '@/lib/pdfExport';
 
 const months = [
   { value: 'all', label: 'Todos os meses' },
@@ -22,17 +29,67 @@ const months = [
   { value: '10', label: 'Outubro' }, { value: '11', label: 'Novembro' }, { value: '12', label: 'Dezembro' },
 ];
 
-function exportExpenseToCSV(expenses: any[]) {
-  const header = 'Estabelecimento,CNPJ/CPF,Categoria,Status,NF,Valor,Mês/Ano\n';
-  const rows = expenses.map(e =>
-    `"${e.estabelecimento}","${e.cnpj_cpf || ''}","${categoryLabels[e.category as keyof typeof categoryLabels] || e.category}","${e.status}","${e.nf_numero || ''}","${Number(e.valor_total).toFixed(2)}","${e.emissao_mes_ano || ''}"`
-  ).join('\n');
-  const blob = new Blob([header + rows], { type: 'text/csv;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url; a.download = `despesas_${new Date().toISOString().slice(0, 10)}.csv`; a.click();
-  URL.revokeObjectURL(url);
-  toast.success(`${expenses.length} despesa(s) exportada(s)`);
+// Modal para escolher tipo de exportação PDF
+function ExportPDFModal({
+  open,
+  onOpenChange,
+  count,
+  onMerged,
+  onIndividual,
+  loading,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  count: number;
+  onMerged: () => void;
+  onIndividual: () => void;
+  loading: boolean;
+}) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader>
+          <DialogTitle>Exportar como PDF</DialogTitle>
+          <DialogDescription>
+            {count === 1
+              ? 'Escolha como deseja exportar os documentos desta despesa.'
+              : `Escolha como deseja exportar os documentos das ${count} despesas selecionadas.`}
+          </DialogDescription>
+        </DialogHeader>
+        <div className="flex flex-col gap-3 mt-2">
+          <Button
+            className="w-full justify-start gap-3 h-14 text-left"
+            variant="outline"
+            disabled={loading}
+            onClick={onMerged}
+          >
+            <FileDown className="w-5 h-5 shrink-0 text-primary" />
+            <div>
+              <p className="font-semibold text-sm">PDF único por despesa</p>
+              <p className="text-xs text-muted-foreground">Todos os documentos concatenados em um PDF</p>
+            </div>
+          </Button>
+          <Button
+            className="w-full justify-start gap-3 h-14 text-left"
+            variant="outline"
+            disabled={loading}
+            onClick={onIndividual}
+          >
+            <Files className="w-5 h-5 shrink-0 text-primary" />
+            <div>
+              <p className="font-semibold text-sm">Arquivos individuais (ZIP)</p>
+              <p className="text-xs text-muted-foreground">Cada documento com nome correto em pasta separada</p>
+            </div>
+          </Button>
+        </div>
+        {loading && (
+          <div className="flex items-center justify-center gap-2 mt-2 text-sm text-muted-foreground">
+            <Loader2 className="w-4 h-4 animate-spin" /> Gerando arquivos...
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
 }
 
 export default function ExpensesPage() {
@@ -44,6 +101,9 @@ export default function ExpensesPage() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [consolidating, setConsolidating] = useState(false);
   const [viewingDoc, setViewingDoc] = useState<any | null>(null);
+  const [exportModalOpen, setExportModalOpen] = useState(false);
+  const [exportTarget, setExportTarget] = useState<'selected' | 'all'>('selected');
+  const [exporting, setExporting] = useState(false);
 
   const findDuplicateGroups = (list: typeof expenses) => {
     const groups: typeof expenses[] = [];
@@ -140,6 +200,51 @@ export default function ExpensesPage() {
 
   const hasFilters = selectedMonth !== 'all' || selectedYear !== 'all';
 
+  // Get expenses to export based on target
+  const getExportExpenses = () => {
+    if (exportTarget === 'all') return filteredExpenses;
+    return filteredExpenses.filter(e => selectedIds.has(e.id));
+  };
+
+  const handleExportMerged = async () => {
+    const toExport = getExportExpenses();
+    setExporting(true);
+    try {
+      if (toExport.length === 1) {
+        const exp = toExport[0];
+        await exportExpenseMergedPDF(exp as any, (exp.documents || []) as any);
+        toast.success('PDF exportado com sucesso');
+      } else {
+        await exportMultipleExpensesZip(toExport as any);
+        toast.success(`${toExport.length} PDFs exportados em ZIP`);
+      }
+      setExportModalOpen(false);
+    } catch (e: any) {
+      toast.error(`Erro ao exportar: ${e.message}`);
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const handleExportIndividual = async () => {
+    const toExport = getExportExpenses();
+    setExporting(true);
+    try {
+      await exportMultipleExpensesIndividualZip(toExport as any);
+      toast.success(`Arquivos exportados em ZIP`);
+      setExportModalOpen(false);
+    } catch (e: any) {
+      toast.error(`Erro ao exportar: ${e.message}`);
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const openExportModal = (target: 'selected' | 'all') => {
+    setExportTarget(target);
+    setExportModalOpen(true);
+  };
+
   if (isLoading) {
     return (
       <div className="space-y-6">
@@ -157,7 +262,7 @@ export default function ExpensesPage() {
           <p className="text-sm text-muted-foreground mt-1">Timeline de despesas e documentos vinculados</p>
         </div>
         {selectedIds.size > 0 && (
-          <Button size="sm" onClick={() => exportExpenseToCSV(filteredExpenses.filter(e => selectedIds.has(e.id)))}>
+          <Button size="sm" onClick={() => openExportModal('selected')}>
             <Download className="w-4 h-4 mr-1" /> Exportar {selectedIds.size}
           </Button>
         )}
@@ -187,7 +292,7 @@ export default function ExpensesPage() {
           <Button variant="outline" size="sm" className="h-9 text-xs" onClick={toggleAll}>
             {selectedIds.size === filteredExpenses.length && filteredExpenses.length > 0 ? 'Desmarcar todos' : 'Selecionar todos'}
           </Button>
-          <Button variant="outline" size="sm" className="h-9 text-xs" onClick={() => exportExpenseToCSV(filteredExpenses)}>
+          <Button variant="outline" size="sm" className="h-9 text-xs" onClick={() => openExportModal('all')}>
             <Download className="w-3.5 h-3.5 mr-1" /> Exportar tudo ({filteredExpenses.length})
           </Button>
         </div>
@@ -250,6 +355,15 @@ export default function ExpensesPage() {
         doc={viewingDoc}
         open={!!viewingDoc}
         onOpenChange={(open) => { if (!open) setViewingDoc(null); }}
+      />
+
+      <ExportPDFModal
+        open={exportModalOpen}
+        onOpenChange={setExportModalOpen}
+        count={exportTarget === 'all' ? filteredExpenses.length : selectedIds.size}
+        onMerged={handleExportMerged}
+        onIndividual={handleExportIndividual}
+        loading={exporting}
       />
     </div>
   );
