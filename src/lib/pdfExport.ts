@@ -1,7 +1,6 @@
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 import JSZip from 'jszip';
 import type { Document, Expense } from '@/data/mockData';
-import { typeLabels } from '@/data/mockData';
 import {
   buildDocumentFilename,
   buildMergeFilename,
@@ -32,7 +31,7 @@ function stripAccents(str: string): string {
   return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^\x00-\x7F]/g, '');
 }
 
-// Download real file from Supabase Storage with correct naming
+// Download single document from Supabase Storage with correct naming
 export async function downloadDocumentFromStorage(doc: any): Promise<void> {
   const { supabase } = await import('@/integrations/supabase/client');
   const filePath = doc.file_path;
@@ -42,84 +41,92 @@ export async function downloadDocumentFromStorage(doc: any): Promise<void> {
   if (error || !data) throw new Error(error?.message || 'Falha ao baixar arquivo');
 
   const filename = buildDocumentFilename(doc, []);
-  const url = URL.createObjectURL(data);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(url);
+  triggerDownloadBlob(data, filename);
 }
 
-async function generateDocumentPage(
-  doc: Document,
-  pdfDoc: PDFDocument,
-  font: Awaited<ReturnType<PDFDocument['embedFont']>>,
-  boldFont: Awaited<ReturnType<PDFDocument['embedFont']>>
-) {
-  const page = pdfDoc.addPage([595.28, 841.89]); // A4
-  const { height } = page.getSize();
-  const margin = 50;
-  let y = height - margin;
+// Embed a real document blob (PDF or image) into a PDFDocument
+async function embedDocBlob(blob: Blob, pdfDoc: PDFDocument): Promise<void> {
+  const arrayBuffer = await blob.arrayBuffer();
+  const type = blob.type;
 
-  const title = stripAccents(typeLabels[doc.type]?.toUpperCase() || 'DOCUMENTO');
-  page.drawText(title, { x: margin, y, size: 18, font: boldFont, color: rgb(0.1, 0.4, 0.3) });
-  y -= 35;
-
-  page.drawLine({ start: { x: margin, y }, end: { x: 545, y }, thickness: 1, color: rgb(0.8, 0.8, 0.8) });
-  y -= 25;
-
-  const lines: [string, string][] = [];
-  const ext = doc.extracted;
-  if (ext.estabelecimento) lines.push(['Estabelecimento:', ext.estabelecimento]);
-  if (ext.cnpj) lines.push(['CNPJ:', ext.cnpj]);
-  if (ext.valor !== undefined) lines.push(['Valor:', `R$ ${formatMoneyBR(ext.valor)}`]);
-  if (ext.data_vencimento) lines.push(['Vencimento:', formatDateBR(ext.data_vencimento)]);
-  if (ext.data_pagamento) lines.push(['Data Pagamento:', formatDateBR(ext.data_pagamento)]);
-  if (ext.meio_pagamento) lines.push(['Meio Pagamento:', ext.meio_pagamento.toUpperCase()]);
-  if (ext.nf_numero) lines.push(['Nº NF/DANFE:', ext.nf_numero]);
-  lines.push(['Tipo Documento:', typeLabels[doc.type] || doc.type]);
-  lines.push(['Arquivo Original:', doc.original_filename]);
-
-  for (const [label, value] of lines) {
-    page.drawText(stripAccents(label), { x: margin, y, size: 10, font: boldFont, color: rgb(0.3, 0.3, 0.3) });
-    page.drawText(stripAccents(value), { x: margin + 130, y, size: 10, font, color: rgb(0.1, 0.1, 0.1) });
-    y -= 20;
+  if (type === 'application/pdf') {
+    try {
+      const srcPdf = await PDFDocument.load(arrayBuffer);
+      const pages = await pdfDoc.copyPages(srcPdf, srcPdf.getPageIndices());
+      pages.forEach(p => pdfDoc.addPage(p));
+      return;
+    } catch {
+      // fall through to placeholder
+    }
   }
 
-  y -= 20;
-  page.drawRectangle({
-    x: margin, y: y - 60, width: 495, height: 60,
-    color: rgb(0.96, 0.97, 0.98),
-    borderColor: rgb(0.85, 0.87, 0.9),
-    borderWidth: 1,
-  });
-  page.drawText('Documento placeholder - em producao, o conteudo real do PDF sera inserido aqui.', {
-    x: margin + 15, y: y - 35, size: 9, font, color: rgb(0.5, 0.5, 0.5),
-  });
+  if (type.startsWith('image/')) {
+    try {
+      let embeddedImage;
+      if (type === 'image/png') {
+        embeddedImage = await pdfDoc.embedPng(arrayBuffer);
+      } else {
+        embeddedImage = await pdfDoc.embedJpg(arrayBuffer);
+      }
+      const page = pdfDoc.addPage([595.28, 841.89]);
+      const { width, height } = page.getSize();
+      const margin = 40;
+      const maxW = width - margin * 2;
+      const maxH = height - margin * 2;
+      const scale = Math.min(maxW / embeddedImage.width, maxH / embeddedImage.height, 1);
+      const imgW = embeddedImage.width * scale;
+      const imgH = embeddedImage.height * scale;
+      page.drawImage(embeddedImage, {
+        x: (width - imgW) / 2,
+        y: (height - imgH) / 2,
+        width: imgW,
+        height: imgH,
+      });
+      return;
+    } catch {
+      // fall through to placeholder
+    }
+  }
+
+  await addPlaceholderPage(pdfDoc);
 }
 
-export async function exportSingleDocumentPDF(doc: Document, siblingDocs: Document[] = []) {
-  const pdfDoc = await PDFDocument.create();
+async function addPlaceholderPage(pdfDoc: PDFDocument) {
+  const page = pdfDoc.addPage([595.28, 841.89]);
   const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
-  const boldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
-
-  await generateDocumentPage(doc, pdfDoc, font, boldFont);
-
-  const bytes = await pdfDoc.save();
-  const filename = buildDocumentFilename(doc, siblingDocs);
-  triggerDownloadPdf(bytes, filename);
+  page.drawText('Documento nao disponivel para visualizacao.', {
+    x: 80, y: 400, size: 12, font, color: rgb(0.5, 0.5, 0.5),
+  });
 }
 
-export async function exportMergedPDF(expense: Expense, docs: Document[]) {
+// Fetch blob from Supabase Storage for a document
+async function fetchDocBlob(doc: any): Promise<Blob | null> {
+  try {
+    const { supabase } = await import('@/integrations/supabase/client');
+    const filePath = doc.file_path;
+    if (!filePath) return null;
+    const { data, error } = await supabase.storage.from('documents').download(filePath);
+    if (error || !data) return null;
+    return data;
+  } catch {
+    return null;
+  }
+}
+
+// Export a single expense as one merged PDF (all docs concatenated)
+export async function exportExpenseMergedPDF(expense: Expense, docs: Document[]): Promise<void> {
   const order = ['boleto', 'comprovante', 'nf', 'danfe', 'recibo', 'unknown'];
   const sorted = [...docs].sort((a, b) => order.indexOf(a.type) - order.indexOf(b.type));
 
   const pdfDoc = await PDFDocument.create();
-  const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
-  const boldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
 
   for (const doc of sorted) {
-    await generateDocumentPage(doc, pdfDoc, font, boldFont);
+    const blob = await fetchDocBlob(doc);
+    if (blob) {
+      await embedDocBlob(blob, pdfDoc);
+    } else {
+      await addPlaceholderPage(pdfDoc);
+    }
   }
 
   const bytes = await pdfDoc.save();
@@ -127,23 +134,110 @@ export async function exportMergedPDF(expense: Expense, docs: Document[]) {
   triggerDownloadPdf(bytes, filename);
 }
 
-export async function exportDocumentsAsZip(expense: Expense, docs: Document[]) {
+// Export a single expense as ZIP with individual PDFs (each with correct name)
+export async function exportExpenseAsZip(expense: Expense, docs: Document[]): Promise<void> {
   const zip = new JSZip();
-  const font_ = StandardFonts.Helvetica;
-  const boldFont_ = StandardFonts.HelveticaBold;
 
   for (const doc of docs) {
-    const pdfDoc = await PDFDocument.create();
-    const font = await pdfDoc.embedFont(font_);
-    const boldFont = await pdfDoc.embedFont(boldFont_);
-    await generateDocumentPage(doc, pdfDoc, font, boldFont);
-    const bytes = await pdfDoc.save();
+    const blob = await fetchDocBlob(doc);
     const filename = buildDocumentFilename(doc, docs);
+
+    if (blob) {
+      if (blob.type === 'application/pdf') {
+        zip.file(filename, await blob.arrayBuffer());
+      } else if (blob.type.startsWith('image/')) {
+        const pdfDoc = await PDFDocument.create();
+        await embedDocBlob(blob, pdfDoc);
+        const bytes = await pdfDoc.save();
+        zip.file(filename, bytes);
+      } else {
+        zip.file(filename, await blob.arrayBuffer());
+      }
+    }
+  }
+
+  const blob = await zip.generateAsync({ type: 'blob' });
+  const zipName = `${expense.estabelecimento}_${expense.emissao_mes_ano || 'docs'}.zip`
+    .replace(/[<>:"/\\|?*]/g, '').replace(/\s+/g, '_');
+  triggerDownloadBlob(blob, zipName);
+}
+
+// Export multiple expenses: one merged PDF per expense, all zipped together
+export async function exportMultipleExpensesZip(expenses: Array<Expense & { documents?: Document[] }>): Promise<void> {
+  const zip = new JSZip();
+
+  for (const expense of expenses) {
+    const docs = expense.documents || [];
+    if (!docs.length) continue;
+
+    const order = ['boleto', 'comprovante', 'nf', 'danfe', 'recibo', 'unknown'];
+    const sorted = [...docs].sort((a, b) => order.indexOf(a.type) - order.indexOf(b.type));
+
+    const pdfDoc = await PDFDocument.create();
+    for (const doc of sorted) {
+      const blob = await fetchDocBlob(doc);
+      if (blob) {
+        await embedDocBlob(blob, pdfDoc);
+      } else {
+        await addPlaceholderPage(pdfDoc);
+      }
+    }
+
+    const bytes = await pdfDoc.save();
+    const filename = buildMergeFilename(expense, sorted);
     zip.file(filename, bytes);
   }
 
   const blob = await zip.generateAsync({ type: 'blob' });
-  const zipName = `${expense.estabelecimento}_${expense.emissao_mes_ano}_docs.zip`
-    .replace(/[<>:"/\\|?*]/g, '');
+  const zipName = `despesas_${new Date().toISOString().slice(0, 10)}.zip`;
   triggerDownloadBlob(blob, zipName);
+}
+
+// Export multiple expenses as ZIP of folders with individual files per doc
+export async function exportMultipleExpensesIndividualZip(expenses: Array<Expense & { documents?: Document[] }>): Promise<void> {
+  const zip = new JSZip();
+
+  for (const expense of expenses) {
+    const docs = expense.documents || [];
+    if (!docs.length) continue;
+
+    const folderName = `${expense.estabelecimento}_${expense.emissao_mes_ano || 'sem-data'}`
+      .replace(/[<>:"/\\|?*]/g, '').replace(/\s+/g, '_');
+    const folder = zip.folder(folderName)!;
+
+    for (const doc of docs) {
+      const blob = await fetchDocBlob(doc);
+      const filename = buildDocumentFilename(doc, docs);
+
+      if (blob) {
+        if (blob.type === 'application/pdf') {
+          folder.file(filename, await blob.arrayBuffer());
+        } else if (blob.type.startsWith('image/')) {
+          const pdfDoc = await PDFDocument.create();
+          await embedDocBlob(blob, pdfDoc);
+          const bytes = await pdfDoc.save();
+          folder.file(filename, bytes);
+        } else {
+          folder.file(filename, await blob.arrayBuffer());
+        }
+      }
+    }
+  }
+
+  const blob = await zip.generateAsync({ type: 'blob' });
+  const zipName = `despesas_individuais_${new Date().toISOString().slice(0, 10)}.zip`;
+  triggerDownloadBlob(blob, zipName);
+}
+
+// Legacy functions kept for compatibility
+export async function exportSingleDocumentPDF(doc: Document, siblingDocs: Document[] = []) {
+  await downloadDocumentFromStorage(doc);
+}
+
+export async function exportMergedPDF(expense: Expense, docs: Document[]) {
+  await exportExpenseMergedPDF(expense, docs);
+}
+
+export async function exportDocumentsAsZip(expense: Expense, docs: Document[]) {
+  await exportExpenseAsZip(expense, docs);
 }
