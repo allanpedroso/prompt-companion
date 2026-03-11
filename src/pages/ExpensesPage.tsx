@@ -47,44 +47,46 @@ function ExportPDFModal({
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-sm">
+      <DialogContent className="w-[calc(100vw-2rem)] max-w-md mx-auto">
         <DialogHeader>
-          <DialogTitle>Exportar como PDF</DialogTitle>
-          <DialogDescription>
+          <DialogTitle className="text-white">Exportar como PDF</DialogTitle>
+          <DialogDescription className="text-[#8aa3c0]">
             {count === 1
               ? 'Escolha como deseja exportar os documentos desta despesa.'
-              : `Escolha como deseja exportar os documentos das ${count} despesas selecionadas.`}
+              : `Escolha como exportar as ${count} despesas selecionadas.`}
           </DialogDescription>
         </DialogHeader>
-        <div className="flex flex-col gap-3 mt-2">
-          <Button
-            className="w-full justify-start gap-3 h-14 text-left"
-            variant="outline"
+        <div className="flex flex-col gap-3 mt-1">
+          <button
+            className="w-full flex items-center gap-3 p-4 rounded-xl border border-[#1e3050] hover:border-[#3d8ce8] hover:bg-[#162038] transition-all text-left disabled:opacity-50 disabled:cursor-not-allowed"
             disabled={loading}
             onClick={onMerged}
           >
-            <FileDown className="w-5 h-5 shrink-0 text-primary" />
-            <div>
-              <p className="font-semibold text-sm">PDF único por despesa</p>
-              <p className="text-xs text-muted-foreground">Todos os documentos concatenados em um PDF</p>
+            <div className="w-10 h-10 rounded-lg bg-[#1a3a6b]/40 flex items-center justify-center shrink-0">
+              <FileDown className="w-5 h-5 text-[#3d8ce8]" />
             </div>
-          </Button>
-          <Button
-            className="w-full justify-start gap-3 h-14 text-left"
-            variant="outline"
+            <div className="min-w-0">
+              <p className="font-semibold text-sm text-white">PDF único por despesa</p>
+              <p className="text-xs text-[#8aa3c0] mt-0.5 leading-relaxed">Todos os documentos concatenados em um PDF</p>
+            </div>
+          </button>
+          <button
+            className="w-full flex items-center gap-3 p-4 rounded-xl border border-[#1e3050] hover:border-[#3d8ce8] hover:bg-[#162038] transition-all text-left disabled:opacity-50 disabled:cursor-not-allowed"
             disabled={loading}
             onClick={onIndividual}
           >
-            <Files className="w-5 h-5 shrink-0 text-primary" />
-            <div>
-              <p className="font-semibold text-sm">Arquivos individuais (ZIP)</p>
-              <p className="text-xs text-muted-foreground">Cada documento com nome correto em pasta separada</p>
+            <div className="w-10 h-10 rounded-lg bg-[#1a3a6b]/40 flex items-center justify-center shrink-0">
+              <Files className="w-5 h-5 text-[#3d8ce8]" />
             </div>
-          </Button>
+            <div className="min-w-0">
+              <p className="font-semibold text-sm text-white">Arquivos individuais (ZIP)</p>
+              <p className="text-xs text-[#8aa3c0] mt-0.5 leading-relaxed">Cada documento com nome correto em pasta separada</p>
+            </div>
+          </button>
         </div>
         {loading && (
-          <div className="flex items-center justify-center gap-2 mt-2 text-sm text-muted-foreground">
-            <Loader2 className="w-4 h-4 animate-spin" /> Gerando arquivos...
+          <div className="flex items-center justify-center gap-2 py-2 text-sm text-[#8aa3c0]">
+            <Loader2 className="w-4 h-4 animate-spin text-[#3d8ce8]" /> Gerando arquivos...
           </div>
         )}
       </DialogContent>
@@ -256,87 +258,95 @@ export default function ExpensesPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Despesas</h1>
-          <p className="text-sm text-muted-foreground mt-1">Timeline de despesas e documentos vinculados</p>
+          <h1 className="text-2xl font-bold text-white">Despesas</h1>
+          <p className="text-sm text-[#8aa3c0] mt-1">Timeline de despesas e documentos vinculados</p>
         </div>
         {selectedIds.size > 0 && (
-          <Button size="sm" onClick={() => openExportModal('selected')}>
+          <Button size="sm" className="shrink-0 bg-[#1a6bcc] hover:bg-[#1558ab] text-white shadow-lg shadow-blue-900/30" onClick={() => openExportModal('selected')}>
             <Download className="w-4 h-4 mr-1" /> Exportar {selectedIds.size}
           </Button>
         )}
       </div>
 
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="flex items-center gap-1.5 text-sm text-muted-foreground"><Filter className="w-4 h-4" /><span>Filtros:</span></div>
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="flex items-center gap-1.5 text-sm text-[#8aa3c0]"><Filter className="w-4 h-4" /><span>Filtros:</span></div>
         <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-          <SelectTrigger className="w-[160px] h-9 text-sm"><CalendarIcon className="w-3.5 h-3.5 mr-1.5 text-muted-foreground" /><SelectValue /></SelectTrigger>
+          <SelectTrigger className="w-[150px] h-8 text-sm border-[#1e3050] bg-[#131d2e] text-[#c5d5e8]"><CalendarIcon className="w-3.5 h-3.5 mr-1.5 text-[#8aa3c0]" /><SelectValue /></SelectTrigger>
           <SelectContent>{months.map(m => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}</SelectContent>
         </Select>
         <Select value={selectedYear} onValueChange={setSelectedYear}>
-          <SelectTrigger className="w-[120px] h-9 text-sm"><SelectValue placeholder="Ano" /></SelectTrigger>
+          <SelectTrigger className="w-[100px] h-8 text-sm border-[#1e3050] bg-[#131d2e] text-[#c5d5e8]"><SelectValue placeholder="Ano" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todos</SelectItem>
             {years.map(y => <SelectItem key={y} value={y!}>{y}</SelectItem>)}
           </SelectContent>
         </Select>
-        {hasFilters && <Button variant="ghost" size="sm" className="h-9 text-xs" onClick={() => { setSelectedMonth('all'); setSelectedYear('all'); }}><X className="w-3.5 h-3.5 mr-1" /> Limpar</Button>}
-        <div className="ml-auto flex items-center gap-2">
+        {hasFilters && (
+          <Button variant="ghost" size="sm" className="h-8 text-xs text-[#8aa3c0] hover:text-white" onClick={() => { setSelectedMonth('all'); setSelectedYear('all'); }}>
+            <X className="w-3.5 h-3.5 mr-1" /> Limpar
+          </Button>
+        )}
+        <div className="ml-auto flex flex-wrap items-center gap-2">
           {duplicateCount > 0 && (
-            <Button variant="outline" size="sm" className="h-9 text-xs" onClick={handleConsolidate} disabled={consolidating}>
+            <Button variant="outline" size="sm" className="h-8 text-xs border-[#1e3050] text-[#8aa3c0] hover:border-[#3d8ce8] hover:text-white whitespace-nowrap" onClick={handleConsolidate} disabled={consolidating}>
               {consolidating ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <Merge className="w-3.5 h-3.5 mr-1" />}
-              Consolidar duplicatas ({duplicateCount})
+              Duplicatas ({duplicateCount})
             </Button>
           )}
-          <Button variant="outline" size="sm" className="h-9 text-xs" onClick={toggleAll}>
+          <Button variant="outline" size="sm" className="h-8 text-xs border-[#1e3050] text-[#8aa3c0] hover:border-[#3d8ce8] hover:text-white whitespace-nowrap" onClick={toggleAll}>
             {selectedIds.size === filteredExpenses.length && filteredExpenses.length > 0 ? 'Desmarcar todos' : 'Selecionar todos'}
           </Button>
-          <Button variant="outline" size="sm" className="h-9 text-xs" onClick={() => openExportModal('all')}>
+          <Button variant="outline" size="sm" className="h-8 text-xs border-[#1e3050] text-[#8aa3c0] hover:border-[#3d8ce8] hover:text-white whitespace-nowrap" onClick={() => openExportModal('all')}>
             <Download className="w-3.5 h-3.5 mr-1" /> Exportar tudo ({filteredExpenses.length})
           </Button>
         </div>
       </div>
 
-      <div className="space-y-4">
-        {filteredExpenses.length === 0 && <div className="text-center py-12 text-muted-foreground text-sm">Nenhuma despesa encontrada.</div>}
+      <div className="space-y-3">
+        {filteredExpenses.length === 0 && <div className="text-center py-12 text-[#8aa3c0] text-sm">Nenhuma despesa encontrada.</div>}
         {filteredExpenses.map((expense, i) => (
-          <motion.div key={expense.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.08 }} className="glass-card overflow-hidden">
+          <motion.div key={expense.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }} className="bg-[#131d2e] border border-[#1e3050] rounded-xl overflow-hidden hover:border-[#2a4a7f] transition-colors">
             <div className="flex items-center">
-              <div className="pl-4 flex items-center">
+              <div className="pl-4 flex items-center shrink-0">
                 <Checkbox checked={selectedIds.has(expense.id)} onCheckedChange={() => toggleSelect(expense.id)} />
               </div>
-              <button className="flex-1 px-4 py-4 flex items-center gap-4 hover:bg-muted/30 transition-colors text-left"
+              <button className="flex-1 px-4 py-4 flex items-center gap-3 hover:bg-white/[0.03] transition-colors text-left min-w-0"
                 onClick={() => setExpandedId(expandedId === expense.id ? null : expense.id)}>
-                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0"><FileText className="w-5 h-5 text-primary" /></div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-foreground">{expense.estabelecimento}</p>
-                  <p className="text-xs text-muted-foreground">{categoryLabels[expense.category as keyof typeof categoryLabels] || expense.category} · {expense.emissao_mes_ano}{expense.nf_numero && ` · NF ${expense.nf_numero}`}</p>
+                <div className="w-9 h-9 rounded-lg bg-[#1a3a6b]/40 flex items-center justify-center shrink-0">
+                  <FileText className="w-4 h-4 text-[#3d8ce8]" />
                 </div>
-                <div className="text-right flex items-center gap-3">
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-white truncate">{expense.estabelecimento}</p>
+                  <p className="text-xs text-[#8aa3c0] mt-0.5 truncate">{categoryLabels[expense.category as keyof typeof categoryLabels] || expense.category} · {expense.emissao_mes_ano}{expense.nf_numero && ` · NF ${expense.nf_numero}`}</p>
+                </div>
+                <div className="text-right flex items-center gap-2 shrink-0">
                   <div>
-                    <p className="text-sm font-bold text-foreground font-mono">R$ {Number(expense.valor_total).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
-                    <StatusBadge status={expense.status as any} />
+                    <p className="text-sm font-bold text-white font-mono whitespace-nowrap">R$ {Number(expense.valor_total).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                    <div className="flex justify-end mt-1">
+                      <StatusBadge status={expense.status as any} />
+                    </div>
                   </div>
-                  <ChevronRight className={`w-4 h-4 text-muted-foreground transition-transform ${expandedId === expense.id ? 'rotate-90' : ''}`} />
+                  <ChevronRight className={`w-4 h-4 text-[#8aa3c0] transition-transform shrink-0 ${expandedId === expense.id ? 'rotate-90' : ''}`} />
                 </div>
               </button>
             </div>
             {expandedId === expense.id && expense.documents?.length > 0 && (
-              <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} className="border-t border-border px-6 py-4 bg-muted/20">
-                <p className="text-xs font-semibold text-muted-foreground mb-3 uppercase tracking-wider">Documentos ({expense.documents.length})</p>
-                <div className="space-y-3">
+              <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} className="border-t border-[#1e3050] px-5 py-4 bg-[#0f1520]">
+                <p className="text-xs font-semibold text-[#8aa3c0] mb-3 uppercase tracking-widest">Documentos ({expense.documents.length})</p>
+                <div className="space-y-2">
                   {expense.documents.map((doc: any) => (
-                    <div key={doc.id} className="flex items-center gap-4">
-                      <div className="w-2.5 h-2.5 rounded-full bg-primary mt-0.5 shrink-0" />
+                    <div key={doc.id} className="flex items-center gap-3 py-1">
+                      <div className="w-2 h-2 rounded-full bg-[#3d8ce8] shrink-0" />
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-foreground truncate">{doc.stored_filename || doc.original_filename}</p>
+                        <p className="text-sm font-medium text-[#c5d5e8] truncate">{doc.stored_filename || doc.original_filename}</p>
                         <DocumentTypeBadge type={doc.type as any} />
                       </div>
                       <Button
                         size="icon"
                         variant="ghost"
-                        className="h-7 w-7 shrink-0"
+                        className="h-7 w-7 shrink-0 hover:bg-[#1a3a6b]/40 hover:text-white text-[#8aa3c0]"
                         title="Visualizar"
                         onClick={() => setViewingDoc(doc)}
                       >
