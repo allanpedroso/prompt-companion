@@ -63,6 +63,7 @@ export default function DocumentViewerModal({ doc, open, onOpenChange }: Documen
     setLoading(true);
     setPageNum(1);
     setTotalPages(0);
+    setZoom(100);
     pdfRef.current = null;
     supabase.storage.from('documents').download(doc.file_path).then(({ data, error }) => {
       if (error || !data) { setBlob(null); }
