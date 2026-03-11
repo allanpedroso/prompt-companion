@@ -98,12 +98,14 @@ export default function DocumentViewerModal({ doc, open, onOpenChange }: Documen
       const canvas = canvasRef.current!;
       const container = canvas.parentElement!;
       const viewport = page.getViewport({ scale: 1 });
-      const scale = Math.min(
+      const fitScale = Math.min(
         (container.clientWidth - 32) / viewport.width,
         (container.clientHeight - 32) / viewport.height,
         2
       );
-      const scaled = page.getViewport({ scale });
+      baseScaleRef.current = fitScale;
+      const finalScale = fitScale * (zoom / 100);
+      const scaled = page.getViewport({ scale: finalScale });
       canvas.width = scaled.width;
       canvas.height = scaled.height;
       const ctx = canvas.getContext('2d')!;
@@ -112,7 +114,7 @@ export default function DocumentViewerModal({ doc, open, onOpenChange }: Documen
       });
     });
     return () => { cancelled = true; };
-  }, [pageNum, totalPages, isPdf]);
+  }, [pageNum, totalPages, isPdf, zoom]);
 
   const handleDownload = async () => {
     if (!blob) return;
