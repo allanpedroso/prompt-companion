@@ -38,14 +38,14 @@
     --success: 142 71% 38%;
     --warning: 38 92% 50%;
 
-    /* Sidebar: azul escuro Gest Corp */
-    --sidebar-background: 218 45% 12%;
-    --sidebar-foreground: 214 20% 78%;
+    /* Sidebar: azul muito escuro Gest Corp (estilo imagem) */
+    --sidebar-background: 218 35% 8%;
+    --sidebar-foreground: 214 20% 75%;
     --sidebar-primary: 214 76% 55%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 218 40% 18%;
+    --sidebar-accent: 218 25% 18%;
     --sidebar-accent-foreground: 0 0% 100%;
-    --sidebar-border: 218 35% 20%;
+    --sidebar-border: 218 20% 15%;
     --sidebar-ring: 214 76% 55%;
   }
 }

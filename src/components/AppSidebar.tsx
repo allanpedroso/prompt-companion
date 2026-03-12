@@ -45,7 +45,7 @@ export default function AppSidebar() {
                   : 'text-sidebar-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground'
               }`}
             >
-              <Icon className={`w-[18px] h-[18px] ${isActive ? 'text-sidebar-primary' : 'text-sidebar-foreground/80'}`} />
+              <Icon className={`w-[18px] h-[18px] text-white`} />
               {label}
             </NavLink>
           );
