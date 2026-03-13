@@ -314,8 +314,8 @@ export default function ExpensesPage() {
               </div>
               <button className="flex-1 px-4 py-4 flex items-center gap-3 hover:bg-white/[0.03] transition-colors text-left min-w-0"
                 onClick={() => setExpandedId(expandedId === expense.id ? null : expense.id)}>
-                <div className="w-9 h-9 rounded-lg bg-[#1a3a6b]/40 flex items-center justify-center shrink-0">
-                  <FileText className="w-4 h-4 text-[#3d8ce8]" />
+                <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                  <FileText className="w-4 h-4 text-primary" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-white truncate">{expense.estabelecimento}</p>
