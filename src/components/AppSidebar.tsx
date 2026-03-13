@@ -18,8 +18,7 @@ export default function AppSidebar() {
   const email = user?.email || '';
 
   return (
-    <aside className="fixed left-0 top-0 bottom-0 w-64 bg-sidebar flex flex-col z-50"
-      style={{ background: 'var(--gradient-sidebar)' }}>
+    <aside className="fixed left-0 top-0 bottom-0 w-64 bg-sidebar flex flex-col z-50">
       {/* Logo */}
       <div className="px-6 py-6">
         <div className="flex items-center gap-2.5">
