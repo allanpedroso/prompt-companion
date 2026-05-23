@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 
 export default function AuthPage() {
   const { user, loading } = useAuth();
@@ -60,6 +61,7 @@ function LoginForm() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [mode, setMode] = useState<'login' | 'forgot'>('login');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -70,6 +72,44 @@ function LoginForm() {
       toast.error(error.message === 'Invalid login credentials' ? 'Email ou senha incorretos' : error.message);
     }
   };
+
+  const handleForgot = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    });
+    setLoading(false);
+    if (error) {
+      toast.error(error.message);
+    } else {
+      toast.success('Enviamos um link de redefinição para seu email.');
+      setMode('login');
+    }
+  };
+
+  if (mode === 'forgot') {
+    return (
+      <form onSubmit={handleForgot} className="space-y-4">
+        <p className="text-sm text-muted-foreground">
+          Informe seu email e enviaremos um link para redefinir sua senha.
+        </p>
+        <div className="space-y-2">
+          <Label htmlFor="forgot-email">Email</Label>
+          <div className="relative">
+            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input id="forgot-email" type="email" placeholder="seu@email.com" value={email} onChange={e => setEmail(e.target.value)} className="pl-10" required />
+          </div>
+        </div>
+        <Button type="submit" className="w-full" disabled={loading}>
+          {loading ? 'Enviando...' : 'Enviar link'}
+        </Button>
+        <button type="button" onClick={() => setMode('login')} className="w-full text-sm text-primary hover:underline">
+          Voltar para o login
+        </button>
+      </form>
+    );
+  }
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
@@ -90,6 +130,9 @@ function LoginForm() {
       <Button type="submit" className="w-full" disabled={loading}>
         {loading ? 'Entrando...' : 'Entrar'}
       </Button>
+      <button type="button" onClick={() => setMode('forgot')} className="w-full text-sm text-primary hover:underline">
+        Esqueci minha senha
+      </button>
     </form>
   );
 }
